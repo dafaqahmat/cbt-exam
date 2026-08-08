@@ -1,0 +1,21 @@
+# === Sistem ===
+.DS_Store
+Thumbs.db
+
+# === Dokumen internal (tidak untuk publik) ===
+plan_project_cbt.md
+
+# === Backend Go ===
+backend-golang/cbt-backend.exe
+backend-golang/*.exe
+backend-golang/uploads/
+backend-golang/.env
+
+# === Frontend React ===
+frontend-react-ts/node_modules
+frontend-react-ts/dist
+frontend-react-ts/*.local
+
+# === Logs ===
+*.log
+npm-debug.log*
