@@ -1,93 +1,165 @@
 import { FC } from "react";
-import SidebarMenu from '../../../components/SidebarMenu';
+import AdminLayout from '../../../components/layout/AdminLayout';
 import { Link } from "react-router";
-import { useAdminExams, Exam } from "../../../hooks/exam/useAdminExams";
+import { useAdminExams } from "../../../hooks/exam/useAdminExams";
 import { useExamDelete } from "../../../hooks/exam/useExamDelete";
+import { usePagination } from "../../../hooks/usePagination";
 import { useQueryClient } from '@tanstack/react-query';
-
-const statusBadge = (status: string) => {
-    switch (status) {
-        case 'active': return 'bg-success';
-        case 'closed': return 'bg-danger';
-        default: return 'bg-secondary';
-    }
-}
+import { useConfirm } from "@/components/common/ConfirmProvider";
+import { toast } from "sonner";
+import StatusBadge from "@/components/common/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import Pagination from "@/components/common/Pagination";
+import SearchInput from "@/components/common/SearchInput";
+import { Plus, Pencil, Trash2, ListChecks, Eye } from "lucide-react";
 
 const ExamsIndex: FC = () => {
-    const { data: exams, isLoading, isError, error } = useAdminExams();
+  const { data: exams, isLoading, isError, error } = useAdminExams();
+  const { page, totalPages, totalItems, startIndex, endIndex, items, search, setSearch, goToPage } =
+    usePagination(exams, {
+      searchBy: (e, q) => e.title.toLowerCase().includes(q),
+    });
+  const queryClient = useQueryClient();
+  const { mutate, isPending } = useExamDelete();
+  const confirm = useConfirm();
 
-    const queryClient = useQueryClient();
-    const { mutate, isPending } = useExamDelete();
+  const handleDelete = async (id: number, title: string) => {
+    const ok = await confirm({
+      title: "Hapus ujian",
+      description: `Yakin ingin menghapus "${title}"? Semua sesi & soal terkait ikut terhapus.`,
+      confirmLabel: "Hapus",
+      destructive: true,
+    });
+    if (!ok) return;
 
-    const handleDelete = (id: number) => {
-        if (confirm("Yakin ingin menghapus ujian ini? Semua sesi & soal terkait ikut terhapus.")) {
-            mutate(id, {
-                onSuccess: () => {
-                    queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
-                }
-            });
-        }
-    }
+    mutate(id, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
+        toast.success("Ujian berhasil dihapus");
+      },
+      onError: () => toast.error("Gagal menghapus ujian"),
+    });
+  }
 
-    return (
-        <div className="container mt-5 mb-5">
-            <div className="row">
-                <div className="col-md-3">
-                    <SidebarMenu />
-                </div>
-                <div className="col-md-9">
-                    <div className="card border-0 rounded-4 shadow-sm">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            <span>KELOLA UJIAN</span>
-                            <Link to="/admin/exams/create" className="btn btn-sm btn-success rounded-4 shadow-sm border-0">TAMBAH UJIAN</Link>
-                        </div>
-                        <div className="card-body">
-                            {isLoading && <div className="alert alert-info text-center">Loading...</div>}
-                            {isError && <div className="alert alert-danger text-center">Error: {error.message}</div>}
-
-                            <table className="table table-bordered">
-                                <thead className="bg-dark text-white">
-                                    <tr>
-                                        <th scope="col">Judul</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Sesi</th>
-                                        <th scope="col">Soal</th>
-                                        <th scope="col">Peserta</th>
-                                        <th scope="col">Hasil</th>
-                                        <th scope="col" style={{ width: "35%" }}>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {exams?.map((exam: Exam) => (
-                                        <tr key={exam.id}>
-                                            <td>{exam.title}</td>
-                                            <td><span className={`badge ${statusBadge(exam.status)}`}>{exam.status}</span></td>
-                                            <td className="text-center">{exam.section_count}</td>
-                                            <td className="text-center">{exam.question_count}</td>
-                                            <td className="text-center">{exam.participant_count}</td>
-                                            <td className="text-center">
-                                                <span className={`badge ${exam.results_published ? 'bg-info' : 'bg-secondary'}`}>
-                                                    {exam.results_published ? 'Published' : 'Draft'}
-                                                </span>
-                                            </td>
-                                            <td className="text-center">
-                                                <Link to={`/admin/exams/${exam.id}/sections`} className="btn btn-sm btn-warning rounded-4 shadow-sm border-0 me-1">SESI</Link>
-                                                <Link to={`/admin/exams/${exam.id}/results`} className="btn btn-sm btn-info rounded-4 shadow-sm border-0 me-1">HASIL</Link>
-                                                <Link to={`/admin/exams/edit/${exam.id}`} className="btn btn-sm btn-primary rounded-4 shadow-sm border-0 me-1">EDIT</Link>
-                                                <button onClick={() => handleDelete(exam.id)} disabled={isPending} className="btn btn-sm btn-danger rounded-4 shadow-sm border-0">
-                                                    {isPending ? '...' : 'HAPUS'}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+  return (
+    <AdminLayout
+      title="Kelola Ujian"
+      description="Buat dan atur ujian beserta sesi serta soalnya."
+      actions={
+        <Link to="/admin/exams/create">
+          <Button><Plus className="size-4" /> Tambah Ujian</Button>
+        </Link>
+      }
+    >
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari judul ujian..."
+              className="w-full sm:max-w-xs"
+            />
+            {search && (
+              <p className="text-xs text-muted-foreground">
+                {totalItems} hasil untuk "{search}"
+              </p>
+            )}
+          </div>
+          {isLoading && (
+            <div className="space-y-3 p-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
             </div>
-        </div>
-    )
+          )}
+          {isError && (
+            <p className="p-6 text-sm text-destructive">Error: {error.message}</p>
+          )}
+          {!isLoading && !isError && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12 text-center">No</TableHead>
+                  <TableHead>Judul</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Sesi</TableHead>
+                  <TableHead className="text-center">Soal</TableHead>
+                  <TableHead className="text-center">Peserta</TableHead>
+                  <TableHead>Hasil</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
+                      {search ? `Tidak ada hasil untuk "${search}".` : "Belum ada ujian."}
+                    </TableCell>
+                  </TableRow>
+                )}
+                {items.map((exam, index) => (
+                  <TableRow key={exam.id}>
+                    <TableCell className="text-center text-muted-foreground">{startIndex + index}</TableCell>
+                    <TableCell className="font-medium">{exam.title}</TableCell>
+                    <TableCell><StatusBadge status={exam.status} /></TableCell>
+                    <TableCell className="text-center">{exam.section_count}</TableCell>
+                    <TableCell className="text-center">{exam.question_count}</TableCell>
+                    <TableCell className="text-center">{exam.participant_count}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={exam.results_published ? 'published' : 'not_published'} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Link to={`/admin/exams/${exam.id}/sections`}>
+                          <Button variant="outline" size="sm"><ListChecks className="size-3.5" /> Sesi</Button>
+                        </Link>
+                        <Link to={`/admin/exams/${exam.id}/results`}>
+                          <Button variant="outline" size="sm"><Eye className="size-3.5" /> Hasil</Button>
+                        </Link>
+                        <Link to={`/admin/exams/edit/${exam.id}`}>
+                          <Button variant="outline" size="sm"><Pencil className="size-3.5" /> Edit</Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={isPending}
+                          onClick={() => handleDelete(exam.id, exam.title)}
+                        >
+                          <Trash2 className="size-3.5" /> Hapus
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {!isLoading && !isError && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onPageChange={goToPage}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </AdminLayout>
+  )
 }
 
 export default ExamsIndex;

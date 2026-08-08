@@ -47,6 +47,21 @@ var participants = []struct {
 	{"Andi Wijaya", "andi", "andi@peserta.id"},
 	{"Dewi Lestari", "dewi", "dewi@peserta.id"},
 	{"Rani Permata", "rani", "rani@peserta.id"},
+	{"Joko Widodo Putra", "joko", "joko@peserta.id"},
+	{"Maya Anggraini", "maya", "maya@peserta.id"},
+	{"Fajar Nugroho", "fajar", "fajar@peserta.id"},
+	{"Lina Kartika", "lina", "lina@peserta.id"},
+	{"Rizky Ramadhan", "rizky", "rizky@peserta.id"},
+	{"Nina Suryani", "nina", "nina@peserta.id"},
+	{"Doni Prasetyo", "doni", "doni@peserta.id"},
+	{"Sari Wulandari", "sari", "sari@peserta.id"},
+	{"Bayu Aji Pamungkas", "bayu", "bayu@peserta.id"},
+	{"Intan Permatasari", "intan", "intan@peserta.id"},
+	{"Yudi Hartono", "yudi", "yudi@peserta.id"},
+	{"Ratna Sari Dewi", "ratna", "ratna@peserta.id"},
+	{"Dimas Anggara", "dimas", "dimas@peserta.id"},
+	{"Putri Ayu Lestari", "putri", "putri@peserta.id"},
+	{"Hendra Gunawan", "hendra", "hendra@peserta.id"},
 }
 
 func seedUsers() {
@@ -224,7 +239,7 @@ func main() {
 	fmt.Println("======================================")
 	fmt.Println("Seeding selesai!")
 	fmt.Println("  Admin   : admin / admin123 (dari .env)")
-	fmt.Println("  Peserta : budi, siti, andi, dewi, rani / password: peserta123")
+	fmt.Println("  Peserta : budi, siti, andi, dewi, rani + 15 akun lain / password: peserta123")
 	fmt.Println("  Ujian   : \"Tes Online Contoh Seleksi Umum 2026\" (aktif) + \"Latihan Harian\" (draft)")
 	fmt.Println("======================================")
 }

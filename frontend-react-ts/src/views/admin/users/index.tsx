@@ -1,79 +1,161 @@
 import { FC } from "react";
-import SidebarMenu from '../../../components/SidebarMenu';
+import AdminLayout from '../../../components/layout/AdminLayout';
 import { Link } from "react-router";
 import { useUsers, User } from "../../../hooks/user/useUsers";
 import { useUserDelete } from "../../../hooks/user/useUserDelete";
+import { usePagination } from "../../../hooks/usePagination";
 import { useQueryClient } from '@tanstack/react-query';
+import { useConfirm } from "@/components/common/ConfirmProvider";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import Pagination from "@/components/common/Pagination";
+import SearchInput from "@/components/common/SearchInput";
+import { Plus, Pencil, Trash2, Shield, User as UserIcon } from "lucide-react";
 
 const UsersIndex: FC = () => {
-    const { data: users, isLoading, isError, error } = useUsers();
+  const { data: users, isLoading, isError, error } = useUsers();
+  const { page, totalPages, totalItems, startIndex, endIndex, items, search, setSearch, goToPage } =
+    usePagination<User>(users, {
+      searchBy: (u, q) =>
+        u.name.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q) ||
+        u.role.includes(q),
+    });
+  const queryClient = useQueryClient();
+  const { mutate, isPending } = useUserDelete();
+  const confirm = useConfirm();
 
-    const queryClient = useQueryClient();
-    const { mutate, isPending } = useUserDelete();
+  const handleDelete = async (id: number, name: string) => {
+    const ok = await confirm({
+      title: "Hapus user",
+      description: `Yakin ingin menghapus "${name}"?`,
+      confirmLabel: "Hapus",
+      destructive: true,
+    });
+    if (!ok) return;
 
-    const handleDelete = (id: number) => {
-        if (confirm("Yakin ingin menghapus user ini?")) {
-            mutate(id, {
-                onSuccess: () => {
-                    queryClient.invalidateQueries({ queryKey: ['users'] });
-                }
-            });
-        }
-    }
+    mutate(id, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+        toast.success("User berhasil dihapus");
+      },
+      onError: () => toast.error("Gagal menghapus user"),
+    });
+  }
 
-    return (
-        <div className="container mt-5 mb-5">
-            <div className="row">
-                <div className="col-md-3">
-                    <SidebarMenu />
-                </div>
-                <div className="col-md-9">
-                    <div className="card border-0 rounded-4 shadow-sm">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            <span>KELOLA PESERTA & ADMIN</span>
-                            <Link to="/admin/users/create" className="btn btn-sm btn-success rounded-4 shadow-sm border-0">TAMBAH USER</Link>
-                        </div>
-                        <div className="card-body">
-                            {isLoading && <div className="alert alert-info text-center">Loading...</div>}
-                            {isError && <div className="alert alert-danger text-center">Error: {error.message}</div>}
-
-                            <table className="table table-bordered">
-                                <thead className="bg-dark text-white">
-                                    <tr>
-                                        <th scope="col">Nama</th>
-                                        <th scope="col">Username</th>
-                                        <th scope="col">Email</th>
-                                        <th scope="col">Role</th>
-                                        <th scope="col" style={{ width: "20%" }}>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {users?.map((user: User) => (
-                                        <tr key={user.id}>
-                                            <td>{user.name}</td>
-                                            <td>{user.username}</td>
-                                            <td>{user.email}</td>
-                                            <td>
-                                                <span className={`badge ${user.role === 'admin' ? 'bg-danger' : 'bg-primary'}`}>
-                                                    {user.role}
-                                                </span>
-                                            </td>
-                                            <td className="text-center">
-                                                <Link to={`/admin/users/edit/${user.id}`} className="btn btn-sm btn-primary rounded-4 shadow-sm border-0 me-2">EDIT</Link>
-                                                <button onClick={() => handleDelete(user.id)} disabled={isPending} className="btn btn-sm btn-danger rounded-4 shadow-sm border-0">
-                                                    {isPending ? '...' : 'HAPUS'}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+  return (
+    <AdminLayout
+      title="Kelola Pengguna"
+      description="Kelola peserta dan admin pada sistem CBT."
+      actions={
+        <Link to="/admin/users/create">
+          <Button><Plus className="size-4" /> Tambah User</Button>
+        </Link>
+      }
+    >
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Cari nama, username, email, atau role..."
+              className="w-full sm:max-w-xs"
+            />
+            {search && (
+              <p className="text-xs text-muted-foreground">
+                {totalItems} hasil untuk "{search}"
+              </p>
+            )}
+          </div>
+          {isLoading && (
+            <div className="space-y-3 p-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
             </div>
-        </div>
-    )
+          )}
+          {isError && (
+            <p className="p-6 text-sm text-destructive">Error: {error.message}</p>
+          )}
+          {!isLoading && !isError && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12 text-center">No</TableHead>
+                  <TableHead>Nama</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                      {search ? `Tidak ada hasil untuk "${search}".` : "Belum ada pengguna."}
+                    </TableCell>
+                  </TableRow>
+                )}
+                {items.map((user: User, index) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="text-center text-muted-foreground">{startIndex + index}</TableCell>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${user.role === 'admin' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                        {user.role === 'admin' ? <Shield className="size-3" /> : <UserIcon className="size-3" />}
+                        {user.role}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link to={`/admin/users/edit/${user.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Pencil className="size-3.5" /> Edit
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={isPending}
+                        onClick={() => handleDelete(user.id, user.name)}
+                      >
+                        <Trash2 className="size-3.5" /> Hapus
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {!isLoading && !isError && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onPageChange={goToPage}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </AdminLayout>
+  )
 }
 
 export default UsersIndex;
