@@ -34,6 +34,12 @@ func SetupRouter() *gin.Engine {
 		admin.PUT("/users/:id", controllers.UpdateUser)
 		admin.DELETE("/users/:id", controllers.DeleteUser)
 
+		// kategori peserta
+		admin.GET("/categories", controllers.FindCategories)
+		admin.POST("/categories", controllers.CreateCategory)
+		admin.PUT("/categories/:id", controllers.UpdateCategory)
+		admin.DELETE("/categories/:id", controllers.DeleteCategory)
+
 		// profil admin (akun sendiri)
 		admin.GET("/profile", controllers.GetProfile)
 		admin.PUT("/profile", controllers.UpdateProfile)

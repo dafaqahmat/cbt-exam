@@ -30,6 +30,7 @@ const UsersIndex: FC = () => {
         u.name.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
         (u.email || "").toLowerCase().includes(q) ||
+        (u.category_name || "").toLowerCase().includes(q) ||
         u.role.includes(q),
     });
   const queryClient = useQueryClient();
@@ -98,13 +99,14 @@ const UsersIndex: FC = () => {
                   <TableHead>Username</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Kategori</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
                       {search ? `Tidak ada hasil untuk "${search}".` : "Belum ada pengguna."}
                     </TableCell>
                   </TableRow>
@@ -120,6 +122,15 @@ const UsersIndex: FC = () => {
                         {user.role === 'admin' ? <Shield className="size-3" /> : <UserIcon className="size-3" />}
                         {user.role}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {user.category_name ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
+                          {user.category_name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <Link to={`/admin/users/edit/${user.id}`}>

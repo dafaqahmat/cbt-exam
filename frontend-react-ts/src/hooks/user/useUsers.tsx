@@ -8,6 +8,8 @@ export interface User {
     username: string;
     email: string;
     role: string;
+    category_id?: number | null;
+    category_name?: string;
 }
 
 export const useUsers = (role?: 'peserta' | 'admin') => {

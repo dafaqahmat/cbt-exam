@@ -10,16 +10,32 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func categoryNameOf(categoryId *uint) string {
+	if categoryId == nil {
+		return ""
+	}
+	var cat models.Category
+	if err := database.DB.First(&cat, *categoryId).Error; err != nil {
+		return ""
+	}
+	return cat.Name
+}
+
 func FindUsers(c *gin.Context) {
 
-	var users []models.User
+	var users []structs.UserResponse
 
 	query := database.DB
 	if role := c.Query("role"); role != "" {
 		query = query.Where("role = ?", role)
 	}
 
-	query.Order("id ASC").Find(&users)
+	query.
+		Model(&models.User{}).
+		Select("users.id, users.name, users.username, users.email, users.role, users.category_id, COALESCE(categories.name, '') AS category_name").
+		Joins("LEFT JOIN categories ON categories.id = users.category_id").
+		Order("users.id ASC").
+		Scan(&users)
 
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
@@ -41,12 +57,22 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	if req.Role == "peserta" && req.CategoryId == nil {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  map[string]string{"CategoryId": "Kategori wajib dipilih"},
+		})
+		return
+	}
+
 	user := models.User{
-		Name:     req.Name,
-		Username: req.Username,
-		Email:    req.Email,
-		Password: helpers.HashPassword(req.Password),
-		Role:     req.Role,
+		Name:       req.Name,
+		Username:   req.Username,
+		Email:      req.Email,
+		Password:   helpers.HashPassword(req.Password),
+		Role:       req.Role,
+		CategoryId: req.CategoryId,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -70,11 +96,13 @@ func CreateUser(c *gin.Context) {
 		Success: true,
 		Message: "User created successfully",
 		Data: structs.UserResponse{
-			Id:       user.Id,
-			Name:     user.Name,
-			Username: user.Username,
-			Email:    user.Email,
-			Role:     user.Role,
+			Id:           user.Id,
+			Name:         user.Name,
+			Username:     user.Username,
+			Email:        user.Email,
+			Role:         user.Role,
+			CategoryId:   user.CategoryId,
+			CategoryName: categoryNameOf(user.CategoryId),
 		},
 	})
 }
@@ -105,10 +133,20 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
+	if req.Role == "peserta" && req.CategoryId == nil {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  map[string]string{"CategoryId": "Kategori wajib dipilih"},
+		})
+		return
+	}
+
 	user.Name = req.Name
 	user.Username = req.Username
 	user.Email = req.Email
 	user.Role = req.Role
+	user.CategoryId = req.CategoryId
 
 	if req.Password != "" {
 		user.Password = helpers.HashPassword(req.Password)
@@ -135,11 +173,13 @@ func UpdateUser(c *gin.Context) {
 		Success: true,
 		Message: "User updated successfully",
 		Data: structs.UserResponse{
-			Id:       user.Id,
-			Name:     user.Name,
-			Username: user.Username,
-			Email:    user.Email,
-			Role:     user.Role,
+			Id:           user.Id,
+			Name:         user.Name,
+			Username:     user.Username,
+			Email:        user.Email,
+			Role:         user.Role,
+			CategoryId:   user.CategoryId,
+			CategoryName: categoryNameOf(user.CategoryId),
 		},
 	})
 }

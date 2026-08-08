@@ -7,6 +7,8 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"gorm.io/gorm"
+
 	"cbt-exam/backend-api/config"
 	"cbt-exam/backend-api/database"
 	"cbt-exam/backend-api/helpers"
@@ -39,6 +41,39 @@ func ensureDatabase() {
 
 // ===== seed data peserta =====
 
+var categoryNames = []string{
+	"Siswa Kelas 10",
+	"Siswa Kelas 11",
+	"Siswa Kelas 12",
+	"Umum",
+}
+
+func cleanExisting() {
+	var total int64
+	database.DB.Model(&models.Answer{}).Count(&total)
+	if total > 0 {
+		database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Answer{})
+	}
+	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.SectionAttempt{})
+	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.ExamSession{})
+	database.DB.Where("role = ?", "peserta").Delete(&models.User{})
+	database.DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.Category{})
+	log.Println("Data lama (peserta, kategori, sesi) dihapus untuk seed fresh.")
+}
+
+func seedCategories() {
+	created := 0
+	for _, name := range categoryNames {
+		category := models.Category{Name: name}
+		if err := database.DB.Create(&category).Error; err != nil {
+			log.Printf("Gagal membuat kategori %s: %v", name, err)
+			continue
+		}
+		created++
+	}
+	fmt.Printf("Kategori: %d dibuat ulang (Siswa Kelas 10-12, Umum)\n", created)
+}
+
 var participants = []struct {
 	name, username, email string
 }{
@@ -65,21 +100,23 @@ var participants = []struct {
 }
 
 func seedUsers() {
+	var categories []models.Category
+	database.DB.Order("id ASC").Find(&categories)
+	if len(categories) == 0 {
+		log.Println("Warn: tidak ada kategori, buat seedCategories() terlebih dahulu")
+		return
+	}
+
 	created := 0
-	skipped := 0
-	for _, p := range participants {
-		var count int64
-		database.DB.Model(&models.User{}).Where("username = ?", p.username).Count(&count)
-		if count > 0 {
-			skipped++
-			continue
-		}
+	for i, p := range participants {
+		categoryId := categories[i%len(categories)].Id
 		user := models.User{
-			Name:     p.name,
-			Username: p.username,
-			Email:    p.email,
-			Password: helpers.HashPassword("peserta123"),
-			Role:     "peserta",
+			Name:       p.name,
+			Username:   p.username,
+			Email:      p.email,
+			Password:   helpers.HashPassword("peserta123"),
+			Role:       "peserta",
+			CategoryId: &categoryId,
 		}
 		if err := database.DB.Create(&user).Error; err != nil {
 			log.Printf("Gagal membuat peserta %s: %v", p.username, err)
@@ -87,7 +124,7 @@ func seedUsers() {
 		}
 		created++
 	}
-	fmt.Printf("Peserta: %d dibuat, %d sudah ada (password default: peserta123)\n", created, skipped)
+	fmt.Printf("Peserta: %d dibuat ulang (password default: peserta123)\n", created)
 }
 
 // ===== seed ujian & soal =====
@@ -232,14 +269,18 @@ func main() {
 	ensureDatabase()
 	database.InitDB()
 
+	cleanExisting()
+	seedCategories()
 	seedUsers()
 	seedExams()
 
 	fmt.Println()
 	fmt.Println("======================================")
 	fmt.Println("Seeding selesai!")
-	fmt.Println("  Admin   : admin / admin123 (dari .env)")
-	fmt.Println("  Peserta : budi, siti, andi, dewi, rani + 15 akun lain / password: peserta123")
-	fmt.Println("  Ujian   : \"Tes Online Contoh Seleksi Umum 2026\" (aktif) + \"Latihan Harian\" (draft)")
+	fmt.Println("  Kategori : Siswa Kelas 10, Siswa Kelas 11, Siswa Kelas 12, Umum")
+	fmt.Println("  Admin    : admin / admin123 (dari .env)")
+	fmt.Println("  Peserta  : budi, siti, andi, dewi, rani + 15 akun lain / password: peserta123")
+	fmt.Println("  Ujian    : \"Tes Online Contoh Seleksi Umum 2026\" (aktif) + \"Latihan Harian\" (draft)")
+	fmt.Println("  Peserta  : kategori terbagi merata di Siswa Kelas 10-12 & Umum")
 	fmt.Println("======================================")
 }

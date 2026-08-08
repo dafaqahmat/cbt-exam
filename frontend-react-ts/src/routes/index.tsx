@@ -8,6 +8,7 @@ import Dashboard from "../views/admin/dashboard/index.tsx";
 import UsersIndex from "../views/admin/users/index.tsx";
 import UsersCreate from "../views/admin/users/create.tsx";
 import UsersEdit from "../views/admin/users/edit.tsx";
+import CategoriesIndex from "../views/admin/categories/index.tsx";
 import ExamsIndex from "../views/admin/exams/index.tsx";
 import ExamsCreate from "../views/admin/exams/create.tsx";
 import ExamsEdit from "../views/admin/exams/edit.tsx";
@@ -70,6 +71,9 @@ export default function AppRoutes() {
             } />
             <Route path="/admin/users/edit/:id" element={
                 <Protected role="admin"><UsersEdit /></Protected>
+            } />
+            <Route path="/admin/categories" element={
+                <Protected role="admin"><CategoriesIndex /></Protected>
             } />
             <Route path="/admin/exams" element={
                 <Protected role="admin"><ExamsIndex /></Protected>

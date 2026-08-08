@@ -34,6 +34,7 @@ func InitDB() {
 
 	err = DB.AutoMigrate(
 		&models.User{},
+		&models.Category{},
 		&models.Exam{},
 		&models.ExamSection{},
 		&models.Question{},

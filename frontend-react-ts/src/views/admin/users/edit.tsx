@@ -3,6 +3,7 @@ import AdminLayout from '../../../components/layout/AdminLayout';
 import { Link, useNavigate, useParams } from "react-router";
 import { useUserById } from "../../../hooks/user/useUserById";
 import { useUserUpdate } from "../../../hooks/user/useUserUpdate";
+import { useCategories } from "../../../hooks/category/useCategories";
 import { getValidationErrors } from "../../../services/errors";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,12 +28,13 @@ const UsersEdit: FC = () => {
 
   const { data: user, isLoading } = useUserById(userId);
   const { mutate, isPending } = useUserUpdate();
+  const { data: categories } = useCategories();
 
   const [name, setName] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [role, setRole] = useState<string>('peserta');
+  const [categoryId, setCategoryId] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -40,14 +42,30 @@ const UsersEdit: FC = () => {
       setName(user.name);
       setUsername(user.username);
       setEmail(user.email);
-      setRole(user.role);
+      setCategoryId(user.category_id != null ? String(user.category_id) : '');
     }
   }, [user]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    mutate({ id: userId, data: { name, username, email, password, role } }, {
+    if (!categoryId) {
+      setErrors({ CategoryId: 'Kategori wajib dipilih' });
+      return;
+    }
+
+    if (!email.trim()) {
+      setErrors({ Email: 'Email wajib diisi' });
+      return;
+    }
+
+    mutate({
+      id: userId,
+      data: {
+        name, username, email, password, role: 'peserta',
+        category_id: Number(categoryId),
+      }
+    }, {
       onSuccess: () => {
         toast.success("User berhasil diperbarui");
         navigate('/admin/users');
@@ -60,8 +78,8 @@ const UsersEdit: FC = () => {
 
   return (
     <AdminLayout
-      title="Edit User"
-      description="Perbarui data akun pengguna."
+      title="Edit Peserta"
+      description="Perbarui data akun peserta."
       actions={
         <Link to="/admin/users">
           <Button variant="outline">Batal</Button>
@@ -104,13 +122,14 @@ const UsersEdit: FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email (wajib)</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email"
+                  required
                 />
                 {errors.Email && <p className="text-xs text-destructive">{errors.Email}</p>}
               </div>
@@ -127,21 +146,22 @@ const UsersEdit: FC = () => {
                 {errors.Password && <p className="text-xs text-destructive">{errors.Password}</p>}
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Role</Label>
-                <Select value={role} onValueChange={(v) => v != null && setRole(v)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Pilih role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="peserta">Peserta</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.Role && <p className="text-xs text-destructive">{errors.Role}</p>}
-              </div>
+<div className="space-y-1.5">
+              <Label>Kategori (wajib)</Label>
+              <Select value={categoryId} onValueChange={(v) => v != null && setCategoryId(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(categories ?? []).map((cat) => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.CategoryId && <p className="text-xs text-destructive">{errors.CategoryId}</p>}
+            </div>
 
-              <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-2">
                 <Button type="submit" disabled={isPending}>
                   {isPending && <Loader2 className="size-4 animate-spin" />}
                   {isPending ? 'Menyimpan...' : 'Perbarui'}

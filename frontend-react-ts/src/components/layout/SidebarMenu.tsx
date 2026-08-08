@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   FileText,
+  Tags,
   UserCog,
   LogOut,
 } from "lucide-react";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/categories", label: "Kelola Kategori", icon: Tags },
   { to: "/admin/users", label: "Kelola Peserta", icon: Users },
   { to: "/admin/exams", label: "Kelola Ujian", icon: FileText },
 ];

@@ -8,6 +8,7 @@ export interface UserUpdateRequest {
     email: string;
     password?: string;
     role: string;
+    category_id?: number | null;
 }
 
 export const useUserUpdate = () => {

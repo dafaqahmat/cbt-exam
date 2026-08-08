@@ -2,6 +2,7 @@ import { FC, useState, type FormEvent } from "react";
 import AdminLayout from '../../../components/layout/AdminLayout';
 import { Link, useNavigate } from "react-router";
 import { useUserCreate } from "../../../hooks/user/useUserCreate";
+import { useCategories } from "../../../hooks/category/useCategories";
 import { getValidationErrors } from "../../../services/errors";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,18 +22,32 @@ import { Loader2 } from "lucide-react";
 const UsersCreate: FC = () => {
   const navigate = useNavigate();
   const { mutate, isPending } = useUserCreate();
+  const { data: categories } = useCategories();
 
   const [name, setName] = useState<string>('');
   const [username, setUsername] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [role, setRole] = useState<string>('peserta');
+  const [categoryId, setCategoryId] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    mutate({ name, username, email, password, role }, {
+    if (!categoryId) {
+      setErrors({ CategoryId: 'Kategori wajib dipilih' });
+      return;
+    }
+
+    if (!email.trim()) {
+      setErrors({ Email: 'Email wajib diisi' });
+      return;
+    }
+
+    mutate({
+      name, username, email, password, role: 'peserta',
+      category_id: Number(categoryId),
+    }, {
       onSuccess: () => {
         toast.success("User berhasil dibuat");
         navigate('/admin/users');
@@ -45,8 +60,8 @@ const UsersCreate: FC = () => {
 
   return (
     <AdminLayout
-      title="Tambah User"
-      description="Buat akun peserta atau admin baru."
+      title="Tambah Peserta"
+      description="Buat akun peserta baru."
       actions={
         <Link to="/admin/users">
           <Button variant="outline">Batal</Button>
@@ -81,13 +96,14 @@ const UsersCreate: FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email (wajib)</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
+                required
               />
               {errors.Email && <p className="text-xs text-destructive">{errors.Email}</p>}
             </div>
@@ -105,17 +121,23 @@ const UsersCreate: FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Role</Label>
-              <Select value={role} onValueChange={(v) => v != null && setRole(v)}>
+              <Label>Kategori (wajib)</Label>
+              <Select value={categoryId} onValueChange={(v) => v != null && setCategoryId(v)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Pilih role" />
+                  <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="peserta">Peserta</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  {(categories ?? []).map((cat) => (
+                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              {errors.Role && <p className="text-xs text-destructive">{errors.Role}</p>}
+              {(categories ?? []).length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Belum ada kategori. Tambah dulu di <Link to="/admin/categories" className="underline">Kelola Kategori</Link>.
+                </p>
+              )}
+              {errors.CategoryId && <p className="text-xs text-destructive">{errors.CategoryId}</p>}
             </div>
 
             <div className="flex gap-2 pt-2">
