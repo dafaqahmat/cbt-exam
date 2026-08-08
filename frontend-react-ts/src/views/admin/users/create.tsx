@@ -122,7 +122,11 @@ const UsersCreate: FC = () => {
 
             <div className="space-y-1.5">
               <Label>Kategori (wajib)</Label>
-              <Select value={categoryId} onValueChange={(v) => v != null && setCategoryId(v)}>
+              <Select
+                value={categoryId}
+                onValueChange={(v) => v != null && setCategoryId(v)}
+                items={Object.fromEntries((categories ?? []).map((cat) => [String(cat.id), cat.name]))}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
