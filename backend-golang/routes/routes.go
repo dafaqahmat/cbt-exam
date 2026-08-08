@@ -34,6 +34,10 @@ func SetupRouter() *gin.Engine {
 		admin.PUT("/users/:id", controllers.UpdateUser)
 		admin.DELETE("/users/:id", controllers.DeleteUser)
 
+		// profil admin (akun sendiri)
+		admin.GET("/profile", controllers.GetProfile)
+		admin.PUT("/profile", controllers.UpdateProfile)
+
 		// ujian
 		admin.GET("/exams", controllers.AdminFindExams)
 		admin.POST("/exams", controllers.CreateExam)

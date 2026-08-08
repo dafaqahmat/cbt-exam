@@ -16,6 +16,7 @@ import QuestionsIndex from "../views/admin/questions/index.tsx";
 import QuestionsCreate from "../views/admin/questions/create.tsx";
 import QuestionsEdit from "../views/admin/questions/edit.tsx";
 import ResultsIndex from "../views/admin/results/index.tsx";
+import AdminProfile from "../views/admin/profile/index.tsx";
 import PesertaExams from "../views/peserta/exams/index.tsx";
 import ExamTake from "../views/peserta/exam/take.tsx";
 import ExamResult from "../views/peserta/exam/result.tsx";
@@ -57,6 +58,9 @@ export default function AppRoutes() {
             {/* ADMIN */}
             <Route path="/admin/dashboard" element={
                 <Protected role="admin"><Dashboard /></Protected>
+            } />
+            <Route path="/admin/profile" element={
+                <Protected role="admin"><AdminProfile /></Protected>
             } />
             <Route path="/admin/users" element={
                 <Protected role="admin"><UsersIndex /></Protected>

@@ -10,11 +10,12 @@ export interface User {
     role: string;
 }
 
-export const useUsers = () => {
+export const useUsers = (role?: 'peserta' | 'admin') => {
     return useQuery<User[], Error>({
-        queryKey: ['users'],
+        queryKey: role ? ['users', role] : ['users'],
         queryFn: async () => {
-            const response = await Api.get('/api/admin/users', {
+            const url = role ? `/api/admin/users?role=${role}` : '/api/admin/users';
+            const response = await Api.get(url, {
                 headers: authHeaders(),
             });
             return response.data.data as User[];

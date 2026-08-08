@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   FileText,
+  UserCog,
   LogOut,
 } from "lucide-react";
 import { useAuthUser } from "@/hooks/auth/useAuthUser";
@@ -51,6 +52,21 @@ export default function SidebarMenu() {
             <span>{item.label}</span>
           </NavLink>
         ))}
+
+        <NavLink
+          to="/admin/profile"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+              isActive
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                : "text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )
+          }
+        >
+          <UserCog className="size-4 shrink-0" />
+          <span>Edit Profil</span>
+        </NavLink>
       </nav>
 
       <div className="border-t border-sidebar-border px-3 py-4 md:mt-auto">

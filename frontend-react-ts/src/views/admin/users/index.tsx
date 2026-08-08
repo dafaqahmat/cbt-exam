@@ -23,7 +23,7 @@ import SearchInput from "@/components/common/SearchInput";
 import { Plus, Pencil, Trash2, Shield, User as UserIcon } from "lucide-react";
 
 const UsersIndex: FC = () => {
-  const { data: users, isLoading, isError, error } = useUsers();
+  const { data: users, isLoading, isError, error } = useUsers('peserta');
   const { page, totalPages, totalItems, startIndex, endIndex, items, search, setSearch, goToPage } =
     usePagination<User>(users, {
       searchBy: (u, q) =>
@@ -56,11 +56,11 @@ const UsersIndex: FC = () => {
 
   return (
     <AdminLayout
-      title="Kelola Pengguna"
-      description="Kelola peserta dan admin pada sistem CBT."
+      title="Kelola Peserta"
+      description="Kelola akun peserta pada sistem CBT."
       actions={
         <Link to="/admin/users/create">
-          <Button><Plus className="size-4" /> Tambah User</Button>
+          <Button><Plus className="size-4" /> Tambah Peserta</Button>
         </Link>
       }
     >

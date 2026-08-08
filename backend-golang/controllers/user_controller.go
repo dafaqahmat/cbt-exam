@@ -144,6 +144,112 @@ func UpdateUser(c *gin.Context) {
 	})
 }
 
+func GetProfile(c *gin.Context) {
+
+	currentUserId, _ := c.Get("user_id")
+	if currentUserId == nil {
+		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
+			Success: false,
+			Message: "Unauthorized",
+			Errors:  map[string]string{},
+		})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, currentUserId).Error; err != nil {
+		c.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "User not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, structs.SuccessResponse{
+		Success: true,
+		Message: "Profile retrieved successfully",
+		Data: structs.UserResponse{
+			Id:       user.Id,
+			Name:     user.Name,
+			Username: user.Username,
+			Email:    user.Email,
+			Role:     user.Role,
+		},
+	})
+}
+
+func UpdateProfile(c *gin.Context) {
+
+	currentUserId, _ := c.Get("user_id")
+	if currentUserId == nil {
+		c.JSON(http.StatusUnauthorized, structs.ErrorResponse{
+			Success: false,
+			Message: "Unauthorized",
+			Errors:  map[string]string{},
+		})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, currentUserId).Error; err != nil {
+		c.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "User not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	var req = structs.ProfileUpdateRequest{}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	user.Name = req.Name
+	user.Username = req.Username
+	user.Email = req.Email
+
+	if req.Password != "" {
+		user.Password = helpers.HashPassword(req.Password)
+	}
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		if helpers.IsDuplicateEntryError(err) {
+			c.JSON(http.StatusConflict, structs.ErrorResponse{
+				Success: false,
+				Message: "Duplicate entry error",
+				Errors:  helpers.TranslateErrorMessage(err),
+			})
+		} else {
+			c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+				Success: false,
+				Message: "Failed to update profile",
+				Errors:  helpers.TranslateErrorMessage(err),
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, structs.SuccessResponse{
+		Success: true,
+		Message: "Profile updated successfully",
+		Data: structs.UserResponse{
+			Id:       user.Id,
+			Name:     user.Name,
+			Username: user.Username,
+			Email:    user.Email,
+			Role:     user.Role,
+		},
+	})
+}
+
 func DeleteUser(c *gin.Context) {
 
 	id := c.Param("id")

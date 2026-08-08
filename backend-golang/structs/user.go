@@ -29,3 +29,10 @@ type UserUpdateRequest struct {
 	Password string `json:"password,omitempty"`
 	Role     string `json:"role" binding:"required,oneof=admin peserta"`
 }
+
+type ProfileUpdateRequest struct {
+	Name     string `json:"name" binding:"required"`
+	Username string `json:"username" binding:"required"`
+	Email    string `json:"email"`
+	Password string `json:"password,omitempty"`
+}
