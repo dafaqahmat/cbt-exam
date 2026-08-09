@@ -11,13 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
 const ExamsCreate: FC = () => {
@@ -27,7 +20,6 @@ const ExamsCreate: FC = () => {
 
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  const [status, setStatus] = useState<string>('draft');
   const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -45,7 +37,7 @@ const ExamsCreate: FC = () => {
       return;
     }
 
-    mutate({ title, description, status, category_ids: categoryIds }, {
+    mutate({ title, description, status: 'draft', category_ids: categoryIds }, {
       onSuccess: () => {
         toast.success("Ujian berhasil dibuat");
         navigate('/admin/exams');
@@ -92,21 +84,7 @@ const ExamsCreate: FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={(v) => v != null && setStatus(v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Pilih status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Kategori Peserta (wajib)</Label>
+                <Label>Kategori Peserta (wajib)</Label>
               <div className="flex flex-wrap gap-2">
                 {(categories ?? []).map((cat) => (
                   <Label

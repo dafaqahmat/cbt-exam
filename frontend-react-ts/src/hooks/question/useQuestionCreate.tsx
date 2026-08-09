@@ -3,7 +3,6 @@ import Api from '../../services/api';
 import { authHeaders } from '../../services/headers';
 
 export interface QuestionRequest {
-    type: string;
     question_text: string;
     question_image: string;
     option_a_text: string;

@@ -140,7 +140,31 @@ func finishExam(session *models.ExamSession) structs.CurrentStateResponse {
 	}
 }
 
+func examIsClosed(examId uint) bool {
+	var exam models.Exam
+	if err := database.DB.First(&exam, examId).Error; err != nil {
+		return false
+	}
+	return exam.Status == "closed"
+}
+
+func gradeInProgressAttempts(session *models.ExamSession) {
+	var attempts []models.SectionAttempt
+	database.DB.Where("session_id = ? AND status = ?", session.Id, "in_progress").Find(&attempts)
+	for _, attempt := range attempts {
+		var section models.ExamSection
+		if err := database.DB.First(&section, attempt.SectionId).Error; err != nil {
+			continue
+		}
+		gradeAttempt(&attempt, &section, nil)
+	}
+}
+
 func advanceAfterSection(session *models.ExamSession, current *models.ExamSection) structs.CurrentStateResponse {
+	if examIsClosed(current.ExamId) {
+		return finishExam(session)
+	}
+
 	next := findNextSection(current.ExamId, current.Order)
 	if next == nil {
 		return finishExam(session)
@@ -404,6 +428,17 @@ func GetCurrentState(c *gin.Context) {
 		return
 	}
 
+	if session.Status == "in_progress" && examIsClosed(session.ExamId) {
+		gradeInProgressAttempts(&session)
+		finishExam(&session)
+		c.JSON(http.StatusOK, structs.SuccessResponse{
+			Success: true,
+			Message: "Exam closed by admin",
+			Data:    structs.CurrentStateResponse{Phase: "finished"},
+		})
+		return
+	}
+
 	var attempt models.SectionAttempt
 	errAttempt := database.DB.
 		Where("session_id = ? AND status = ?", session.Id, "in_progress").
@@ -633,6 +668,16 @@ func StartSection(c *gin.Context) {
 			Success: false,
 			Message: "You don't have an active session for this exam",
 			Errors:  map[string]string{},
+		})
+		return
+	}
+
+	if examIsClosed(section.ExamId) {
+		finishExam(session)
+		c.JSON(http.StatusOK, structs.SuccessResponse{
+			Success: true,
+			Message: "Exam closed by admin",
+			Data:    structs.CurrentStateResponse{Phase: "finished"},
 		})
 		return
 	}

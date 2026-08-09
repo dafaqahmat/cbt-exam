@@ -14,7 +14,6 @@ func toAdminQuestionResponse(q models.Question) structs.AdminQuestionResponse {
 	return structs.AdminQuestionResponse{
 		Id:            q.Id,
 		SectionId:     q.SectionId,
-		Type:          q.Type,
 		QuestionText:  q.QuestionText,
 		QuestionImage: q.QuestionImage,
 		OptionAText:   q.OptionAText,
@@ -115,7 +114,6 @@ func CreateQuestion(c *gin.Context) {
 
 	question := models.Question{
 		SectionId:     section.Id,
-		Type:          req.Type,
 		QuestionText:  req.QuestionText,
 		QuestionImage: req.QuestionImage,
 		OptionAText:   req.OptionAText,
@@ -161,6 +159,21 @@ func UpdateQuestion(c *gin.Context) {
 		return
 	}
 
+	var section models.ExamSection
+	if err := database.DB.First(&section, question.SectionId).Error; err != nil {
+		c.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "Section not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	if errResp, err := sectionExamIsActive(section.ExamId, "Question"); errResp != nil || err != nil {
+		c.JSON(http.StatusUnprocessableEntity, errResp)
+		return
+	}
+
 	var req = structs.QuestionRequest{}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -172,7 +185,6 @@ func UpdateQuestion(c *gin.Context) {
 		return
 	}
 
-	question.Type = req.Type
 	question.QuestionText = req.QuestionText
 	question.QuestionImage = req.QuestionImage
 	question.OptionAText = req.OptionAText
@@ -216,6 +228,21 @@ func DeleteQuestion(c *gin.Context) {
 			Message: "Question not found",
 			Errors:  helpers.TranslateErrorMessage(err),
 		})
+		return
+	}
+
+	var section models.ExamSection
+	if err := database.DB.First(&section, question.SectionId).Error; err != nil {
+		c.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "Section not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	if errResp, err := sectionExamIsActive(section.ExamId, "Question"); errResp != nil || err != nil {
+		c.JSON(http.StatusUnprocessableEntity, errResp)
 		return
 	}
 

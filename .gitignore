@@ -10,6 +10,7 @@ backend-golang/cbt-backend.exe
 backend-golang/*.exe
 backend-golang/uploads/
 backend-golang/.env
+backend-golang/tmp/
 
 # === Frontend React ===
 frontend-react-ts/node_modules

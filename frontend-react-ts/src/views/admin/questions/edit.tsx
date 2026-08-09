@@ -34,7 +34,6 @@ const QuestionsEdit: FC = () => {
   };
 
   const initialForm: QuestionRequest | null = question ? {
-    type: question.type,
     question_text: question.question_text,
     question_image: question.question_image,
     option_a_text: question.option_a_text,

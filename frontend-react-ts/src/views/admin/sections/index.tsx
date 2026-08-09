@@ -5,6 +5,8 @@ import { useSections, Section } from "../../../hooks/section/useSections";
 import { useSectionCreate, SectionRequest } from "../../../hooks/section/useSectionCreate";
 import { useSectionUpdate } from "../../../hooks/section/useSectionUpdate";
 import { useSectionDelete } from "../../../hooks/section/useSectionDelete";
+import { useAdminExams } from "../../../hooks/exam/useAdminExams";
+import { useExamUpdate } from "../../../hooks/exam/useExamUpdate";
 import { usePagination } from "../../../hooks/usePagination";
 import { useQueryClient } from '@tanstack/react-query';
 import { getValidationErrors } from '../../../services/errors';
@@ -55,6 +57,39 @@ const SectionsIndex: FC = () => {
   const { mutate: createSection, isPending: creating } = useSectionCreate();
   const { mutate: updateSection, isPending: updating } = useSectionUpdate();
   const { mutate: deleteSection } = useSectionDelete();
+  const { data: exams } = useAdminExams();
+  const exam = exams?.find((e) => e.id === examId);
+  const isActive = exam?.status === 'active';
+  const { mutate: updateExam, isPending: updatingExam } = useExamUpdate();
+
+  const handleToDraft = async () => {
+    if (!exam) return;
+    const ok = await confirm({
+      title: "Ubah ke Draft?",
+      description: "Seluruh progres peserta akan dihapus dan peserta harus mengulang ujian dari 0.",
+      confirmLabel: "Ya, ubah ke Draft",
+      destructive: true,
+    });
+    if (!ok) return;
+    updateExam(
+      {
+        id: examId,
+        data: {
+          title: exam.title,
+          description: exam.description,
+          status: 'draft',
+          category_ids: (exam.categories ?? []).map((cat) => cat.id),
+        },
+      },
+      {
+        onSuccess: () => {
+          invalidate();
+          toast.success('Ujian dinonaktifkan (Draft). Sesi dan soal kini bisa diubah/dihapus.');
+        },
+        onError: () => toast.error('Gagal mengubah ujian menjadi Draft'),
+      }
+    );
+  };
 
   const [form, setForm] = useState<SectionFormRequest>(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -213,6 +248,11 @@ const SectionsIndex: FC = () => {
               placeholder="Cari judul sesi..."
               className="w-full sm:max-w-xs"
             />
+            {isActive && (
+              <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                Ujian sedang aktif, sesi terkunci. Gunakan <strong>"Ubah ke Draft"</strong> untuk menonaktifkan sebelum mengubah atau menghapus sesi.
+              </p>
+            )}
           </CardHeader>
           <CardContent className="p-0">
             {isLoading && (
@@ -261,17 +301,32 @@ const SectionsIndex: FC = () => {
                           <Link to={`/admin/sections/${section.id}/questions`}>
                             <Button variant="outline" size="sm"><ListChecks className="size-3.5" /> Soal</Button>
                           </Link>
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(section)}>
-                            <Pencil className="size-3.5" /> Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => handleDelete(section.id, section.title)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
+                          {isActive ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={updatingExam}
+                                onClick={handleToDraft}
+                              >
+                                Ubah ke Draft
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button variant="outline" size="sm" onClick={() => handleEdit(section)}>
+                                <Pencil className="size-3.5" /> Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => handleDelete(section.id, section.title)}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

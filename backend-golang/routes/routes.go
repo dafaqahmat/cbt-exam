@@ -73,6 +73,9 @@ func SetupRouter() *gin.Engine {
 	}
 
 	// ===== PESERTA =====
+	// stream status ujian (SSE) memakai token via query, bukan header
+	router.GET("/api/exams/:id/stream", controllers.StreamExamStatus)
+
 	peserta := router.Group("/api", middlewares.AuthMiddleware(), middlewares.PesertaOnly())
 	{
 		peserta.GET("/exams", controllers.PesertaFindExams)

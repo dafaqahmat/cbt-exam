@@ -9,7 +9,6 @@ import (
 type Question struct {
 	Id            uint           `json:"id" gorm:"primaryKey"`
 	SectionId     uint           `json:"section_id" gorm:"index;not null"`
-	Type          string         `json:"type" gorm:"not null"`
 	QuestionText  string         `json:"question_text" gorm:"type:text"`
 	QuestionImage string         `json:"question_image"`
 	OptionAText   string         `json:"option_a_text" gorm:"type:text"`

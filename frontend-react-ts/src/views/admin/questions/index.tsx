@@ -3,6 +3,8 @@ import AdminLayout from '../../../components/layout/AdminLayout';
 import { Link, useParams } from "react-router";
 import { useAdminQuestions, Question } from "../../../hooks/question/useAdminQuestions";
 import { useQuestionDelete } from "../../../hooks/question/useQuestionDelete";
+import { useAdminExams } from "../../../hooks/exam/useAdminExams";
+import { useExamUpdate } from "../../../hooks/exam/useExamUpdate";
 import { usePagination } from "../../../hooks/usePagination";
 import { useQueryClient } from '@tanstack/react-query';
 import { useConfirm } from "@/components/common/ConfirmProvider";
@@ -27,12 +29,44 @@ const QuestionsIndex: FC = () => {
     usePagination<Question>(questions, {
       searchBy: (q, query) =>
         (q.question_text || "").toLowerCase().includes(query) ||
-        q.type.toLowerCase().includes(query) ||
         q.correct_answer.toLowerCase().includes(query),
     });
   const queryClient = useQueryClient();
   const { mutate, isPending } = useQuestionDelete();
   const confirm = useConfirm();
+  const { data: exams } = useAdminExams();
+  const exam = exams?.find((e) => (e.sections ?? []).some((s) => s.id === sectionId));
+  const isActive = exam?.status === 'active';
+  const { mutate: updateExam, isPending: updatingExam } = useExamUpdate();
+
+  const handleToDraft = async () => {
+    if (!exam) return;
+    const ok = await confirm({
+      title: "Ubah ke Draft?",
+      description: "Seluruh progres peserta akan dihapus dan peserta harus mengulang ujian dari 0.",
+      confirmLabel: "Ya, ubah ke Draft",
+      destructive: true,
+    });
+    if (!ok) return;
+    updateExam(
+      {
+        id: exam.id,
+        data: {
+          title: exam.title,
+          description: exam.description,
+          status: 'draft',
+          category_ids: (exam.categories ?? []).map((cat) => cat.id),
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
+          toast.success('Ujian dinonaktifkan (Draft). Sesi dan soal kini bisa diubah/dihapus.');
+        },
+        onError: () => toast.error('Gagal mengubah ujian menjadi Draft'),
+      }
+    );
+  };
 
   const handleDelete = async (questionId: number) => {
     const ok = await confirm({
@@ -79,6 +113,11 @@ const QuestionsIndex: FC = () => {
       )}
       {!isLoading && !isError && (
         <>
+          {isActive && (
+            <p className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+              Ujian sedang aktif, soal terkunci. Gunakan <strong>"Ubah ke Draft"</strong> untuk menonaktifkan sebelum mengubah atau menghapus soal.
+            </p>
+          )}
           <SearchInput
             value={search}
             onChange={setSearch}
@@ -108,25 +147,37 @@ const QuestionsIndex: FC = () => {
                     <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
                       #{startIndex + index}
                     </span>
-                    <Badge variant="secondary">{question.type}</Badge>
                     <Badge variant="secondary">Kunci: {question.correct_answer}</Badge>
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                       {question.points} poin
                     </span>
                   </div>
                   <div className="flex gap-1">
-                    <Link to={`/admin/questions/${question.id}/edit`}>
-                      <Button variant="outline" size="sm"><Pencil className="size-3.5" /> Edit</Button>
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      disabled={isPending}
-                      onClick={() => handleDelete(question.id)}
-                    >
-                      <Trash2 className="size-3.5" /> Hapus
-                    </Button>
+                    {isActive ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={updatingExam}
+                        onClick={handleToDraft}
+                      >
+                        Ubah ke Draft
+                      </Button>
+                    ) : (
+                      <>
+                        <Link to={`/admin/questions/${question.id}/edit`}>
+                          <Button variant="outline" size="sm"><Pencil className="size-3.5" /> Edit</Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={isPending}
+                          onClick={() => handleDelete(question.id)}
+                        >
+                          <Trash2 className="size-3.5" /> Hapus
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
 

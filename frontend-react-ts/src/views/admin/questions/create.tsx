@@ -10,7 +10,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 
 const initialForm: QuestionRequest = {
-  type: 'text_text',
   question_text: '',
   question_image: '',
   option_a_text: '',

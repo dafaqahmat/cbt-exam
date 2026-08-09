@@ -5,7 +5,6 @@ import { authHeaders } from '../../services/headers';
 export interface Question {
     id: number;
     section_id: number;
-    type: string;
     question_text: string;
     question_image: string;
     option_a_text: string;

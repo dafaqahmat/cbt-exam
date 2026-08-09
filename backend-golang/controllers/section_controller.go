@@ -11,6 +11,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ===== helper internal =====
+
+func sectionExamIsActive(examId uint, field string) (*structs.ErrorResponse, error) {
+	var exam models.Exam
+	if err := database.DB.First(&exam, examId).Error; err != nil {
+		return &structs.ErrorResponse{
+			Success: false,
+			Message: "Exam not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		}, err
+	}
+	if exam.Status == "active" {
+		return &structs.ErrorResponse{
+			Success: false,
+			Message: "Exam is active",
+			Errors:  map[string]string{field: "Ujian masih aktif, ubah ke Draft dulu sebelum mengubah atau menghapus"},
+		}, nil
+	}
+	return nil, nil
+}
+
 func FindSections(c *gin.Context) {
 
 	examId := c.Param("id")
@@ -126,6 +147,11 @@ func UpdateSection(c *gin.Context) {
 		return
 	}
 
+	if errResp, err := sectionExamIsActive(section.ExamId, "Section"); errResp != nil || err != nil {
+		c.JSON(http.StatusUnprocessableEntity, errResp)
+		return
+	}
+
 	var req = structs.SectionRequest{}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -182,6 +208,11 @@ func DeleteSection(c *gin.Context) {
 			Message: "Section not found",
 			Errors:  helpers.TranslateErrorMessage(err),
 		})
+		return
+	}
+
+	if errResp, err := sectionExamIsActive(section.ExamId, "Section"); errResp != nil || err != nil {
+		c.JSON(http.StatusUnprocessableEntity, errResp)
 		return
 	}
 

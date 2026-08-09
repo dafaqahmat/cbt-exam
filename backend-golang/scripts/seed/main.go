@@ -213,7 +213,6 @@ func insertQuestions(sectionID uint, questions []seedQuestion) {
 	for _, q := range questions {
 		question := models.Question{
 			SectionId:     sectionID,
-			Type:          "text_text",
 			QuestionText:  q.text,
 			OptionAText:   q.a,
 			OptionBText:   q.b,

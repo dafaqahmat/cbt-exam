@@ -8,6 +8,8 @@ import {
   startSection,
   reportViolation,
 } from "../../../hooks/peserta/useExamSession";
+import { openExamStream } from "../../../services/examStream";
+import { toast } from "sonner";
 import { Question } from "../../../hooks/question/useAdminQuestions";
 import { Section } from "../../../hooks/section/useSections";
 import { useConfirm } from "@/components/common/ConfirmProvider";
@@ -131,6 +133,50 @@ const ExamTake: FC = () => {
     })();
     return () => { mounted = false; };
   }, [examId, applyState]);
+
+  useEffect(() => {
+    let handled = false;
+
+    const handleOnce = (fn: () => void) => {
+      if (handled) return;
+      handled = true;
+      fn();
+    };
+
+    const doFinalizeClosed = async () => {
+      try {
+        const state = await getCurrentState(examId);
+        applyState(state);
+      } catch {
+        navigate(`/peserta/exams/${examId}/result`);
+      }
+    };
+
+    const closeStream = openExamStream(
+      examId,
+      (event) => {
+        if (event.status === 'closed') {
+          handleOnce(() => {
+            if (phaseRef.current === 'questions') {
+              doSubmit().then(doFinalizeClosed);
+            } else {
+              doFinalizeClosed();
+            }
+          });
+        } else if (event.status === 'draft') {
+          handleOnce(() => {
+            toast.info('Ujian telah dikembalikan ke Draft oleh pengawas. Progres Anda direset.');
+            navigate('/peserta/exams');
+          });
+        }
+      },
+      () => {
+        // stream terputus — abaikan, timer lokal tetap berjalan
+      }
+    );
+
+    return () => closeStream();
+  }, [examId, applyState, doSubmit, navigate]);
 
   useEffect(() => {
     const interval = setInterval(() => {

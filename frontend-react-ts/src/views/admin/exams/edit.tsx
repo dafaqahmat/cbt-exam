@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useConfirm } from "@/components/common/ConfirmProvider";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ const ExamsEdit: FC = () => {
   const exam = exams?.find((e) => e.id === examId);
   const { mutate, isPending } = useExamUpdate();
   const { data: categories } = useCategories();
+  const confirm = useConfirm();
 
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -53,12 +55,41 @@ const ExamsEdit: FC = () => {
     );
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const hasSessions = (exam?.section_count ?? 0) > 0;
+  const hasQuestions = (exam?.question_count ?? 0) > 0;
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (categoryIds.length === 0) {
       setErrors({ CategoryIds: 'Pilih minimal satu kategori peserta' });
       return;
+    }
+
+    if (status === 'active' && (!hasSessions || !hasQuestions)) {
+      setErrors({ Status: 'Sesi dan soal masih kosong' });
+      return;
+    }
+
+    setErrors({});
+
+    if (exam?.status !== status) {
+      if (status === 'draft') {
+        const ok = await confirm({
+          title: "Ubah ke Draft?",
+          description: "Seluruh progres peserta akan dihapus dan peserta harus mengulang ujian dari 0.",
+          confirmLabel: "Ya, ubah ke Draft",
+          destructive: true,
+        });
+        if (!ok) return;
+      } else if (status === 'closed') {
+        const ok = await confirm({
+          title: "Tutup ujian?",
+          description: "Peserta yang sedang mengerjakan akan dihentikan secara otomatis.",
+          confirmLabel: "Ya, tutup ujian",
+        });
+        if (!ok) return;
+      }
     }
 
     mutate({ id: examId, data: { title, description, status, category_ids: categoryIds } }, {
@@ -126,6 +157,12 @@ const ExamsEdit: FC = () => {
                     <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {hasSessions && hasQuestions
+                    ? `Siap diaktifkan (${exam?.section_count} sesi, ${exam?.question_count} soal).`
+                    : 'Ujian harus punya minimal 1 sesi dan 1 soal sebelum bisa diaktifkan.'}
+                </p>
+                {errors.Status && <p className="text-xs text-destructive">{errors.Status}</p>}
               </div>
 
               <div className="space-y-1.5">

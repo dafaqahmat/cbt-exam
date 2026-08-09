@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+
 	"cbt-exam/backend-api/database"
 	"cbt-exam/backend-api/helpers"
 	"cbt-exam/backend-api/models"
@@ -16,6 +18,47 @@ type ExamWithInfo struct {
 	SectionCount     int64 `json:"section_count"`
 	QuestionCount    int64 `json:"question_count"`
 	ParticipantCount int64 `json:"participant_count"`
+}
+
+func countSections(examId uint) int64 {
+	var count int64
+	database.DB.Model(&models.ExamSection{}).Where("exam_id = ?", examId).Count(&count)
+	return count
+}
+
+func countQuestions(examId uint) int64 {
+	var count int64
+	database.DB.Model(&models.Question{}).
+		Joins("JOIN exam_sections ON exam_sections.id = questions.section_id").
+		Where("exam_sections.exam_id = ?", examId).Count(&count)
+	return count
+}
+
+func examIsReadyToActivate(examId uint) bool {
+	return countSections(examId) > 0 && countQuestions(examId) > 0
+}
+
+func examNotActiveError(c *gin.Context) {
+	c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+		Success: false,
+		Message: "Validation Errors",
+		Errors:  map[string]string{"Status": "Sesi dan soal masih kosong"},
+	})
+}
+
+func resetExamProgress(examId uint) {
+	var sessionIds []uint
+	database.DB.Model(&models.ExamSession{}).Where("exam_id = ?", examId).Pluck("id", &sessionIds)
+	if len(sessionIds) == 0 {
+		return
+	}
+	database.DB.Where("session_id IN ?", sessionIds).Delete(&models.Answer{})
+	database.DB.Where("session_id IN ?", sessionIds).Delete(&models.SectionAttempt{})
+	database.DB.Where("id IN ?", sessionIds).Delete(&models.ExamSession{})
+}
+
+func publishExamStatus(examId uint, status string) {
+	streamHub.publish(examId, "status", fmt.Sprintf(`{"status": %q}`, status))
 }
 
 func AdminFindExams(c *gin.Context) {
@@ -64,10 +107,7 @@ func CreateExam(c *gin.Context) {
 		return
 	}
 
-	status := req.Status
-	if status == "" {
-		status = "draft"
-	}
+	status := "draft"
 
 	if len(req.CategoryIds) == 0 {
 		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
@@ -174,6 +214,12 @@ func UpdateExam(c *gin.Context) {
 		return
 	}
 
+	if req.Status == "active" && exam.Status != "active" && !examIsReadyToActivate(exam.Id) {
+		examNotActiveError(c)
+		return
+	}
+
+	oldStatus := exam.Status
 	exam.Title = req.Title
 	exam.Description = req.Description
 	if req.Status != "" {
@@ -198,6 +244,16 @@ func UpdateExam(c *gin.Context) {
 		return
 	}
 	exam.Categories = categories
+
+	if req.Status != "" && req.Status != oldStatus {
+		if req.Status == "draft" {
+			resetExamProgress(exam.Id)
+			publishExamStatus(exam.Id, "draft")
+		}
+		if req.Status == "closed" {
+			publishExamStatus(exam.Id, "closed")
+		}
+	}
 
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,

@@ -24,13 +24,6 @@ interface QuestionFormProps {
   onSubmit: (data: QuestionRequest) => void;
 }
 
-const TYPES = [
-  { value: "text_text", label: "Teks → Teks" },
-  { value: "text_image", label: "Teks → Gambar" },
-  { value: "image_text", label: "Gambar → Teks" },
-  { value: "image_image", label: "Gambar → Gambar" },
-];
-
 const OPTION_KEYS = ["a", "b", "c", "d"] as const;
 type OptionKey = (typeof OPTION_KEYS)[number];
 type QuestionField = keyof QuestionRequest;
@@ -111,21 +104,6 @@ const QuestionForm: FC<QuestionFormProps> = ({ initial, errors, submitLabel, isP
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Jenis Soal" error={errors.Type}>
-          <Select value={form.type} onValueChange={(v) => v != null && setField("type", v)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Pilih jenis soal" />
-            </SelectTrigger>
-            <SelectContent>
-              {TYPES.map((t) => (
-                <SelectItem key={t.value} value={t.value}>
-                  {t.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-
         <Field label="Poin" error={errors.Points}>
           <Input
             type="number"

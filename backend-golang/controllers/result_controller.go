@@ -20,8 +20,7 @@ type SectionScoreItem struct {
 }
 
 type AnswerReviewItem struct {
-	QuestionId     uint   `json:"question_id"`
-	Type           string `json:"type"`
+	QuestionId     uint `json:"question_id"`
 	QuestionText   string `json:"question_text"`
 	QuestionImage  string `json:"question_image"`
 	OptionAText    string `json:"option_a_text"`
@@ -60,7 +59,6 @@ func buildAnswerReview(answers []models.Answer) []AnswerReviewItem {
 		}
 		result = append(result, AnswerReviewItem{
 			QuestionId:     q.Id,
-			Type:           q.Type,
 			QuestionText:   q.QuestionText,
 			QuestionImage:  q.QuestionImage,
 			OptionAText:    q.OptionAText,

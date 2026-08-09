@@ -1,7 +1,6 @@
 package structs
 
 type QuestionRequest struct {
-	Type          string `json:"type" binding:"required,oneof=text_text text_image image_text image_image"`
 	QuestionText  string `json:"question_text"`
 	QuestionImage string `json:"question_image"`
 	OptionAText   string `json:"option_a_text"`
@@ -19,7 +18,6 @@ type QuestionRequest struct {
 type AdminQuestionResponse struct {
 	Id            uint   `json:"id"`
 	SectionId     uint   `json:"section_id"`
-	Type          string `json:"type"`
 	QuestionText  string `json:"question_text"`
 	QuestionImage string `json:"question_image"`
 	OptionAText   string `json:"option_a_text"`
