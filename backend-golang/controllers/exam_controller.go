@@ -277,6 +277,15 @@ func DeleteExam(c *gin.Context) {
 		return
 	}
 
+	if exam.Status != "draft" && exam.Status != "closed" {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Ujian tidak dapat dihapus saat berstatus aktif",
+			Errors:  map[string]string{"Status": "Hanya ujian berstatus Draft atau Closed yang dapat dihapus"},
+		})
+		return
+	}
+
 	if err := database.DB.Delete(&exam).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
 			Success: false,
