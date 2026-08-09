@@ -92,6 +92,7 @@ const ExamsIndex: FC = () => {
                 <TableRow>
                   <TableHead className="w-12 text-center">No</TableHead>
                   <TableHead>Judul</TableHead>
+                  <TableHead>Kategori</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-center">Sesi</TableHead>
                   <TableHead className="text-center">Soal</TableHead>
@@ -101,9 +102,9 @@ const ExamsIndex: FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.length === 0 && (
+                {(items ?? []).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={9} className="h-24 text-center text-sm text-muted-foreground">
                       {search ? `Tidak ada hasil untuk "${search}".` : "Belum ada ujian."}
                     </TableCell>
                   </TableRow>
@@ -112,6 +113,18 @@ const ExamsIndex: FC = () => {
                   <TableRow key={exam.id}>
                     <TableCell className="text-center text-muted-foreground">{startIndex + index}</TableCell>
                     <TableCell className="font-medium">{exam.title}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(exam.categories ?? []).map((cat) => (
+                          <span
+                            key={cat.id}
+                            className="rounded-full border bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                          >
+                            {cat.name}
+                          </span>
+                        ))}
+                      </div>
+                    </TableCell>
                     <TableCell><StatusBadge status={exam.status} /></TableCell>
                     <TableCell className="text-center">{exam.section_count}</TableCell>
                     <TableCell className="text-center">{exam.question_count}</TableCell>

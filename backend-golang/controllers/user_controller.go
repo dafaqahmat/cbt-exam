@@ -66,6 +66,17 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
+	var duplicate int64
+	if err := database.DB.Model(&models.User{}).
+		Where("username = ?", req.Username).Count(&duplicate).Error; err == nil && duplicate > 0 {
+		c.JSON(http.StatusConflict, structs.ErrorResponse{
+			Success: false,
+			Message: "Duplicate entry error",
+			Errors:  map[string]string{"Username": "Username sudah digunakan"},
+		})
+		return
+	}
+
 	user := models.User{
 		Name:       req.Name,
 		Username:   req.Username,
@@ -138,6 +149,17 @@ func UpdateUser(c *gin.Context) {
 			Success: false,
 			Message: "Validation Errors",
 			Errors:  map[string]string{"CategoryId": "Kategori wajib dipilih"},
+		})
+		return
+	}
+
+	var duplicate int64
+	if err := database.DB.Model(&models.User{}).
+		Where("username = ? AND id != ?", req.Username, user.Id).Count(&duplicate).Error; err == nil && duplicate > 0 {
+		c.JSON(http.StatusConflict, structs.ErrorResponse{
+			Success: false,
+			Message: "Duplicate entry error",
+			Errors:  map[string]string{"Username": "Username sudah digunakan"},
 		})
 		return
 	}
@@ -248,6 +270,17 @@ func UpdateProfile(c *gin.Context) {
 			Success: false,
 			Message: "Validation Errors",
 			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	var duplicate int64
+	if err := database.DB.Model(&models.User{}).
+		Where("username = ? AND id != ?", req.Username, user.Id).Count(&duplicate).Error; err == nil && duplicate > 0 {
+		c.JSON(http.StatusConflict, structs.ErrorResponse{
+			Success: false,
+			Message: "Duplicate entry error",
+			Errors:  map[string]string{"Username": "Username sudah digunakan"},
 		})
 		return
 	}

@@ -6,6 +6,7 @@ export interface ExamRequest {
     title: string;
     description: string;
     status: string;
+    category_ids: number[];
 }
 
 export const useExamCreate = () => {

@@ -192,6 +192,16 @@ func PesertaFindExams(c *gin.Context) {
 
 	userId := c.MustGet("user_id").(uint)
 
+	var user models.User
+	if err := database.DB.First(&user, userId).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to load user",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
 	var sessions []models.ExamSession
 	database.DB.Where("user_id = ?", userId).Find(&sessions)
 
@@ -204,8 +214,21 @@ func PesertaFindExams(c *gin.Context) {
 
 	var exams []models.Exam
 	query := database.DB.Where("status = ?", "active")
+	if user.CategoryId != nil {
+		var categoryExamIds []uint
+		database.DB.Table("exam_categories").
+			Where("category_id = ?", *user.CategoryId).
+			Pluck("exam_id", &categoryExamIds)
+		if len(categoryExamIds) > 0 {
+			query = query.Where("id IN ?", categoryExamIds)
+		} else {
+			query = query.Where("1 = 0")
+		}
+	} else {
+		query = query.Where("1 = 0")
+	}
 	if len(examIdsWithSession) > 0 {
-		query = database.DB.Where("status = ? OR id IN ?", "active", examIdsWithSession)
+		query = query.Or("id IN ?", examIdsWithSession)
 	}
 	query.Order("id DESC").Find(&exams)
 
@@ -268,6 +291,38 @@ func StartExam(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, structs.ErrorResponse{
 			Success: false,
 			Message: "Exam is not active",
+			Errors:  map[string]string{},
+		})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, userId).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to load user",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	if user.CategoryId != nil {
+		var granted int64
+		database.DB.Table("exam_categories").
+			Where("exam_id = ? AND category_id = ?", examId, *user.CategoryId).
+			Count(&granted)
+		if granted == 0 {
+			c.JSON(http.StatusForbidden, structs.ErrorResponse{
+				Success: false,
+				Message: "Ujian tidak untuk kategori Anda",
+				Errors:  map[string]string{},
+			})
+			return
+		}
+	} else {
+		c.JSON(http.StatusForbidden, structs.ErrorResponse{
+			Success: false,
+			Message: "Ujian tidak untuk kategori Anda",
 			Errors:  map[string]string{},
 		})
 		return

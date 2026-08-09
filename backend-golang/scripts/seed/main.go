@@ -146,17 +146,19 @@ type seedSection struct {
 }
 
 type seedExam struct {
-	title       string
-	description string
-	status      string
-	sections    []seedSection
+	title        string
+	description  string
+	status       string
+	categoryRefs []string
+	sections     []seedSection
 }
 
 var exams = []seedExam{
 	{
-		title:       "Tes Online — Seleksi Umum 2026",
-		description: "Contoh ujian multi-sesi dengan 2 sesi dan istirahat di antaranya.",
-		status:      "active",
+		title:        "Tes Online — Seleksi Umum 2026",
+		description:  "Contoh ujian multi-sesi dengan 2 sesi dan istirahat di antaranya.",
+		status:       "active",
+		categoryRefs: []string{"Umum", "Siswa Kelas 12"},
 		sections: []seedSection{
 			{
 				title:           "Sesi 1 - Matematika Dasar",
@@ -187,9 +189,10 @@ var exams = []seedExam{
 		},
 	},
 	{
-		title:       "Latihan Harian (Draft)",
-		description: "Contoh ujian status draft, belum boleh dikerjakan peserta.",
-		status:      "draft",
+		title:        "Latihan Harian (Draft)",
+		description:  "Contoh ujian status draft, belum boleh dikerjakan peserta.",
+		status:       "draft",
+		categoryRefs: []string{"Siswa Kelas 10", "Siswa Kelas 11"},
 		sections: []seedSection{
 			{
 				title:           "Latihan Umum",
@@ -229,37 +232,50 @@ func seedExams() {
 	for _, exam := range exams {
 		var count int64
 		database.DB.Model(&models.Exam{}).Where("title = ?", exam.title).Count(&count)
-		if count > 0 {
-			fmt.Printf("Ujian \"%s\" sudah ada, dilewati.\n", exam.title)
-			continue
-		}
-
-		examRecord := models.Exam{
-			Title:       exam.title,
-			Description: exam.description,
-			Status:      exam.status,
-		}
-		if err := database.DB.Create(&examRecord).Error; err != nil {
-			log.Printf("!! Gagal membuat ujian %s: %v", exam.title, err)
-			continue
-		}
-
-		for _, sec := range exam.sections {
-			section := models.ExamSection{
-				ExamId:            examRecord.Id,
-				Title:             sec.title,
-				Order:             sec.order,
-				DurationMinutes:   sec.durationMinutes,
-				BreakAfterSeconds: sec.breakSeconds,
+		if count == 0 {
+			examRecord := models.Exam{
+				Title:       exam.title,
+				Description: exam.description,
+				Status:      exam.status,
 			}
-			if err := database.DB.Create(&section).Error; err != nil {
-				log.Printf("!! Gagal membuat sesi %s: %v", sec.title, err)
+			if err := database.DB.Create(&examRecord).Error; err != nil {
+				log.Printf("!! Gagal membuat ujian %s: %v", exam.title, err)
 				continue
 			}
-			insertQuestions(section.Id, sec.questions)
-		}
 
-		fmt.Printf("Ujian \"%s\" dibuat (%d sesi, status: %s)\n", exam.title, len(exam.sections), exam.status)
+			for _, sec := range exam.sections {
+				section := models.ExamSection{
+					ExamId:            examRecord.Id,
+					Title:             sec.title,
+					Order:             sec.order,
+					DurationMinutes:   sec.durationMinutes,
+					BreakAfterSeconds: sec.breakSeconds,
+				}
+				if err := database.DB.Create(&section).Error; err != nil {
+					log.Printf("!! Gagal membuat sesi %s: %v", sec.title, err)
+					continue
+				}
+				insertQuestions(section.Id, sec.questions)
+			}
+
+			attachExamCategories(examRecord.Id, exam.categoryRefs)
+			fmt.Printf("Ujian \"%s\" dibuat (%d sesi, status: %s)\n", exam.title, len(exam.sections), exam.status)
+		} else {
+			var examRecord models.Exam
+			database.DB.Where("title = ?", exam.title).First(&examRecord)
+			attachExamCategories(examRecord.Id, exam.categoryRefs)
+			fmt.Printf("Ujian \"%s\" sudah ada, kategori dipastikan terpasang.\n", exam.title)
+		}
+	}
+}
+
+func attachExamCategories(examId uint, refs []string) {
+	var categories []models.Category
+	if len(refs) > 0 {
+		database.DB.Where("name IN ?", refs).Find(&categories)
+	}
+	if len(categories) > 0 {
+		database.DB.Model(&models.Exam{Id: examId}).Association("Categories").Replace(categories)
 	}
 }
 

@@ -37,6 +37,17 @@ func CreateCategory(c *gin.Context) {
 		return
 	}
 
+	var duplicate int64
+	if err := database.DB.Model(&models.Category{}).
+		Where("name = ?", req.Name).Count(&duplicate).Error; err == nil && duplicate > 0 {
+		c.JSON(http.StatusConflict, structs.ErrorResponse{
+			Success: false,
+			Message: "Duplicate entry error",
+			Errors:  map[string]string{"Name": "Kategori sudah ada"},
+		})
+		return
+	}
+
 	category := models.Category{
 		Name: req.Name,
 	}
@@ -93,6 +104,17 @@ func UpdateCategory(c *gin.Context) {
 
 	category.Name = req.Name
 
+	var duplicate int64
+	if err := database.DB.Model(&models.Category{}).
+		Where("name = ? AND id != ?", req.Name, category.Id).Count(&duplicate).Error; err == nil && duplicate > 0 {
+		c.JSON(http.StatusConflict, structs.ErrorResponse{
+			Success: false,
+			Message: "Duplicate entry error",
+			Errors:  map[string]string{"Name": "Kategori sudah ada"},
+		})
+		return
+	}
+
 	if err := database.DB.Save(&category).Error; err != nil {
 		if helpers.IsDuplicateEntryError(err) {
 			c.JSON(http.StatusConflict, structs.ErrorResponse{
@@ -127,15 +149,6 @@ func DeleteCategory(c *gin.Context) {
 		c.JSON(http.StatusNotFound, structs.ErrorResponse{
 			Success: false,
 			Message: "Category not found",
-			Errors:  helpers.TranslateErrorMessage(err),
-		})
-		return
-	}
-
-	if err := database.DB.Model(&models.User{}).Where("category_id = ?", id).Update("category_id", nil).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
-			Success: false,
-			Message: "Failed to detach category from users",
 			Errors:  helpers.TranslateErrorMessage(err),
 		})
 		return

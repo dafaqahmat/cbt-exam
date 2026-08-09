@@ -12,6 +12,7 @@ export interface Exam {
     created_at: string;
     updated_at: string;
     sections?: Section[];
+    categories?: { id: number; name: string }[];
     section_count?: number;
     question_count?: number;
     participant_count?: number;

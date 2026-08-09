@@ -3,6 +3,7 @@ import AdminLayout from '../../../components/layout/AdminLayout';
 import { Link, useNavigate, useParams } from "react-router";
 import { useAdminExams } from "../../../hooks/exam/useAdminExams";
 import { useExamUpdate } from "../../../hooks/exam/useExamUpdate";
+import { useCategories } from "../../../hooks/category/useCategories";
 import { getValidationErrors } from "../../../services/errors";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -28,10 +30,12 @@ const ExamsEdit: FC = () => {
   const { data: exams, isLoading } = useAdminExams();
   const exam = exams?.find((e) => e.id === examId);
   const { mutate, isPending } = useExamUpdate();
+  const { data: categories } = useCategories();
 
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [status, setStatus] = useState<string>('draft');
+  const [categoryIds, setCategoryIds] = useState<number[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -39,13 +43,25 @@ const ExamsEdit: FC = () => {
       setTitle(exam.title);
       setDescription(exam.description);
       setStatus(exam.status);
+      setCategoryIds((exam.categories ?? []).map((c) => c.id));
     }
   }, [exam]);
+
+  const toggleCategory = (id: number) => {
+    setCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    mutate({ id: examId, data: { title, description, status } }, {
+    if (categoryIds.length === 0) {
+      setErrors({ CategoryIds: 'Pilih minimal satu kategori peserta' });
+      return;
+    }
+
+    mutate({ id: examId, data: { title, description, status, category_ids: categoryIds } }, {
       onSuccess: () => {
         toast.success("Ujian berhasil diperbarui");
         navigate('/admin/exams');
@@ -110,6 +126,30 @@ const ExamsEdit: FC = () => {
                     <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Kategori Peserta (wajib)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(categories ?? []).map((cat) => (
+                    <Label
+                        key={cat.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-lg border border-input px-3 py-1.5 font-normal has-[:checked]:border-primary has-[:checked]:bg-primary/10"
+                    >
+                        <Checkbox
+                          checked={categoryIds.includes(cat.id)}
+                          onChange={() => toggleCategory(cat.id)}
+                        />
+                        {cat.name}
+                    </Label>
+                  ))}
+                </div>
+                {(categories ?? []).length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Belum ada kategori. Tambah dulu di <Link to="/admin/categories" className="underline">Kelola Kategori</Link>.
+                  </p>
+                )}
+                {errors.CategoryIds && <p className="text-xs text-destructive">{errors.CategoryIds}</p>}
               </div>
 
               <div className="flex gap-2 pt-2">

@@ -13,8 +13,8 @@ import (
 
 type ExamWithInfo struct {
 	models.Exam
-	SectionCount    int64 `json:"section_count"`
-	QuestionCount   int64 `json:"question_count"`
+	SectionCount     int64 `json:"section_count"`
+	QuestionCount    int64 `json:"question_count"`
 	ParticipantCount int64 `json:"participant_count"`
 }
 
@@ -23,7 +23,7 @@ func AdminFindExams(c *gin.Context) {
 	var exams []models.Exam
 	database.DB.Preload("Sections", func(db *gorm.DB) *gorm.DB {
 		return db.Order("sort_order ASC")
-	}).Order("id DESC").Find(&exams)
+	}).Preload("Categories").Order("id DESC").Find(&exams)
 
 	result := make([]ExamWithInfo, 0, len(exams))
 	for _, exam := range exams {
@@ -69,10 +69,40 @@ func CreateExam(c *gin.Context) {
 		status = "draft"
 	}
 
+	if len(req.CategoryIds) == 0 {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  map[string]string{"CategoryIds": "Pilih minimal satu kategori peserta"},
+		})
+		return
+	}
+
+	var categories []models.Category
+	if len(req.CategoryIds) > 0 {
+		if err := database.DB.Where("id IN ?", req.CategoryIds).Find(&categories).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+				Success: false,
+				Message: "Failed to load categories",
+				Errors:  helpers.TranslateErrorMessage(err),
+			})
+			return
+		}
+		if len(categories) != len(req.CategoryIds) {
+			c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+				Success: false,
+				Message: "Validation Errors",
+				Errors:  map[string]string{"CategoryIds": "Beberapa kategori tidak valid"},
+			})
+			return
+		}
+	}
+
 	exam := models.Exam{
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      status,
+		Categories:  categories,
 	}
 
 	if err := database.DB.Create(&exam).Error; err != nil {
@@ -117,6 +147,33 @@ func UpdateExam(c *gin.Context) {
 		return
 	}
 
+	if len(req.CategoryIds) == 0 {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  map[string]string{"CategoryIds": "Pilih minimal satu kategori peserta"},
+		})
+		return
+	}
+
+	var categories []models.Category
+	if err := database.DB.Where("id IN ?", req.CategoryIds).Find(&categories).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to load categories",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+	if len(categories) != len(req.CategoryIds) {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Validation Errors",
+			Errors:  map[string]string{"CategoryIds": "Beberapa kategori tidak valid"},
+		})
+		return
+	}
+
 	exam.Title = req.Title
 	exam.Description = req.Description
 	if req.Status != "" {
@@ -131,6 +188,16 @@ func UpdateExam(c *gin.Context) {
 		})
 		return
 	}
+
+	if err := database.DB.Model(&exam).Association("Categories").Replace(categories); err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to update exam categories",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+	exam.Categories = categories
 
 	c.JSON(http.StatusOK, structs.SuccessResponse{
 		Success: true,
@@ -154,47 +221,11 @@ func DeleteExam(c *gin.Context) {
 		return
 	}
 
-	err := database.DB.Transaction(func(tx *gorm.DB) error {
-
-		var sectionIds []uint
-		tx.Model(&models.ExamSection{}).Where("exam_id = ?", exam.Id).Pluck("id", &sectionIds)
-
-		var sessionIds []uint
-		tx.Model(&models.ExamSession{}).Where("exam_id = ?", exam.Id).Pluck("id", &sessionIds)
-
-		if len(sessionIds) > 0 {
-			if err := tx.Where("session_id IN ?", sessionIds).Delete(&models.Answer{}).Error; err != nil {
-				return err
-			}
-			if err := tx.Where("session_id IN ?", sessionIds).Delete(&models.SectionAttempt{}).Error; err != nil {
-				return err
-			}
-			if err := tx.Where("exam_id = ?", exam.Id).Delete(&models.ExamSession{}).Error; err != nil {
-				return err
-			}
-		}
-
-		if len(sectionIds) > 0 {
-			if err := tx.Where("section_id IN ?", sectionIds).Delete(&models.Question{}).Error; err != nil {
-				return err
-			}
-			if err := tx.Where("section_id IN ?", sectionIds).Delete(&models.SectionAttempt{}).Error; err != nil {
-				return err
-			}
-		}
-
-		if err := tx.Where("exam_id = ?", exam.Id).Delete(&models.ExamSection{}).Error; err != nil {
-			return err
-		}
-
-		return tx.Delete(&exam).Error
-	})
-
-	if err != nil {
+	if err := database.DB.Delete(&exam).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
 			Success: false,
 			Message: "Failed to delete exam",
-			Errors:  map[string]string{"Error": err.Error()},
+			Errors:  helpers.TranslateErrorMessage(err),
 		})
 		return
 	}
