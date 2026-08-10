@@ -44,6 +44,9 @@ func SetupRouter() *gin.Engine {
 		admin.GET("/profile", controllers.GetProfile)
 		admin.PUT("/profile", controllers.UpdateProfile)
 
+		// dashboard
+		admin.GET("/dashboard", controllers.GetDashboard)
+
 		// ujian
 		admin.GET("/exams", controllers.AdminFindExams)
 		admin.POST("/exams", controllers.CreateExam)
