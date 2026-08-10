@@ -70,6 +70,9 @@ func SetupRouter() *gin.Engine {
 		// hasil ujian
 		admin.GET("/exams/:id/results", controllers.AdminFindExamResults)
 		admin.GET("/sessions/:id/answers", controllers.AdminFindSessionAnswers)
+
+		// laporan ujian
+		admin.GET("/reports", controllers.GenerateReport)
 	}
 
 	// ===== PESERTA =====

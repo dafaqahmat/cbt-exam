@@ -7,6 +7,7 @@ import {
   Tags,
   UserCog,
   LogOut,
+  BarChart3,
 } from "lucide-react";
 import { useAuthUser } from "@/hooks/auth/useAuthUser";
 import { useLogout } from "@/hooks/auth/useLogout";
@@ -17,6 +18,7 @@ const NAV_ITEMS = [
   { to: "/admin/categories", label: "Kelola Kategori", icon: Tags },
   { to: "/admin/users", label: "Kelola Peserta", icon: Users },
   { to: "/admin/exams", label: "Kelola Ujian", icon: FileText },
+  { to: "/admin/reports", label: "Report Ujian", icon: BarChart3 },
 ];
 
 export default function SidebarMenu() {

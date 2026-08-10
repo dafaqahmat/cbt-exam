@@ -17,6 +17,7 @@ import QuestionsIndex from "../views/admin/questions/index.tsx";
 import QuestionsCreate from "../views/admin/questions/create.tsx";
 import QuestionsEdit from "../views/admin/questions/edit.tsx";
 import ResultsIndex from "../views/admin/results/index.tsx";
+import ReportIndex from "../views/admin/reports/index.tsx";
 import AdminProfile from "../views/admin/profile/index.tsx";
 import PesertaExams from "../views/peserta/exams/index.tsx";
 import ExamTake from "../views/peserta/exam/take.tsx";
@@ -98,6 +99,10 @@ export default function AppRoutes() {
             } />
             <Route path="/admin/exams/:id/results" element={
                 <Protected role="admin"><ResultsIndex /></Protected>
+            } />
+
+            <Route path="/admin/reports" element={
+                <Protected role="admin"><ReportIndex /></Protected>
             } />
 
             {/* PESERTA */}
