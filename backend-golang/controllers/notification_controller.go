@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"cbt-exam/backend-api/config"
@@ -56,6 +58,51 @@ func GetNotifyPreview(c *gin.Context) {
 			"recipient_count": count,
 		},
 	})
+}
+
+var indonesianMonths = []string{"", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}
+
+func formatIndonesianDate(value string) string {
+	t, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return value
+	}
+	return fmt.Sprintf("%d %s %d", t.Day(), indonesianMonths[int(t.Month())], t.Year())
+}
+
+func buildScheduleTime(req structs.NotifyRequest) string {
+	switch {
+	case req.StartTime != "" && req.EndTime != "":
+		return req.StartTime + " s.d. " + req.EndTime
+	case req.StartTime != "":
+		return req.StartTime + " s.d. selesai"
+	case req.EndTime != "":
+		return "s.d. " + req.EndTime
+	default:
+		return ""
+	}
+}
+
+func buildNotifyBody(exam models.Exam, req structs.NotifyRequest, name string, username string, password string) string {
+	var body strings.Builder
+
+	body.WriteString("Halo " + name + ",\n\n")
+	body.WriteString(strings.TrimSpace(req.Message) + "\n\n")
+
+	body.WriteString("Jadwal ujian Anda:\n")
+	body.WriteString("• Ujian   : " + exam.Title + "\n")
+	if req.ExamDate != "" {
+		body.WriteString("• Tanggal : " + formatIndonesianDate(req.ExamDate) + "\n")
+	}
+	if timeRange := buildScheduleTime(req); timeRange != "" {
+		body.WriteString("• Waktu   : " + timeRange + "\n")
+	}
+
+	body.WriteString("\nAkun Anda:\n")
+	body.WriteString("• Username: " + username + "\n")
+	body.WriteString("• Password: " + password + "\n")
+
+	return body.String()
 }
 
 func NotifyExamParticipants(c *gin.Context) {
@@ -115,7 +162,10 @@ func NotifyExamParticipants(c *gin.Context) {
 	var lastErr error
 
 	for _, recipient := range recipients {
-		body := "Halo " + recipient.Name + ",\n\n" + req.Message
+		// Setiap kirim: buat password acak baru untuk peserta, kirim email dulu,
+		// baru simpan hash-nya hanya jika email berhasil terkirim.
+		plainPassword := helpers.GenerateRandomPassword(10)
+		body := buildNotifyBody(exam, req, recipient.Name, recipient.Username, plainPassword)
 
 		err := helpers.SendEmail(recipient.Email, subject, body)
 		if err != nil {
@@ -129,6 +179,8 @@ func NotifyExamParticipants(c *gin.Context) {
 			lastErr = err
 			continue
 		}
+
+		database.DB.Model(&recipient).Update("password", helpers.HashPassword(plainPassword))
 
 		sent++
 		if delay > 0 {

@@ -28,10 +28,17 @@ export const useNotifyPreview = (examId: number) => {
     });
 }
 
+export interface NotifyPayload {
+    message: string;
+    exam_date?: string;
+    start_time?: string;
+    end_time?: string;
+}
+
 export const useSendExamNotification = () => {
     return useMutation({
-        mutationFn: async ({ examId, message }: { examId: number, message: string }) => {
-            const response = await Api.post(`/api/admin/exams/${examId}/notify`, { message }, {
+        mutationFn: async ({ examId, data }: { examId: number, data: NotifyPayload }) => {
+            const response = await Api.post(`/api/admin/exams/${examId}/notify`, data, {
                 headers: authHeaders(),
             });
             return response.data.data as NotifyResult;

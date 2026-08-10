@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Mail, Send, Loader2, ArrowLeft, Info } from "lucide-react";
@@ -20,6 +21,9 @@ const ExamNotify: FC = () => {
   const confirm = useConfirm();
 
   const [message, setMessage] = useState<string>("");
+  const [examDate, setExamDate] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: FormEvent) => {
@@ -33,12 +37,12 @@ const ExamNotify: FC = () => {
 
     const ok = await confirm({
       title: "Kirim pemberitahuan?",
-      description: `Email akan dikirim ke ${preview?.recipient_count ?? 0} peserta sesuai kategori ujian.`,
+      description: `Email akan dikirim ke ${preview?.recipient_count ?? 0} peserta. Sistem akan membuat password baru otomatis untuk setiap peserta dan mencantumkannya di email.`,
       confirmLabel: "Kirim",
     });
     if (!ok) return;
 
-    send({ examId, message: message.trim() }, {
+    send({ examId, data: { message: message.trim(), exam_date: examDate, start_time: startTime, end_time: endTime } }, {
       onSuccess: (result) => {
         if (result.failed === 0) {
           toast.success(`Pemberitahuan terkirim ke ${result.sent} dari ${result.total_recipients} peserta`);
@@ -110,9 +114,40 @@ const ExamNotify: FC = () => {
             <div className="flex items-start gap-2 rounded-lg border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-xs text-muted-foreground">
               <Info className="mt-0.5 size-3.5 shrink-0" />
               <span>
-                Email akan menyapa peserta berdasarkan nama, subjek otomatis "Pemberitahuan Ujian: {preview?.exam_title ?? '...'}",
-                dikirim satu-per-satu ke Gmail masing-masing sesuai kategori ujian.
+                Email menyapa peserta berdasarkan nama, subjek otomatis "Pemberitahuan Ujian: {preview?.exam_title ?? '...'}".
+                Sistem membuat <strong className="text-foreground">password baru otomatis</strong> untuk setiap penerima dan
+                mencantumkan username + password beserta jadwal yang Anda isi di bawah ini.
               </span>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="exam-date">Tanggal Ujian</Label>
+                <Input
+                  id="exam-date"
+                  type="date"
+                  value={examDate}
+                  onChange={(e) => setExamDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="start-time">Waktu Mulai</Label>
+                <Input
+                  id="start-time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="end-time">Waktu Selesai</Label>
+                <Input
+                  id="end-time"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="space-y-1.5">
