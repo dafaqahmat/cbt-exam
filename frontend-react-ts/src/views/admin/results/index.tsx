@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useMemo, useState } from "react";
 import AdminLayout from '../../../components/layout/AdminLayout';
 import { Link, useParams } from "react-router";
 import { useAdminResults, AdminResultItem } from "../../../hooks/result/useAdminResults";
@@ -29,7 +29,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import Pagination from "@/components/common/Pagination";
 import SearchInput from "@/components/common/SearchInput";
-import { ArrowLeft, Send, Eye } from "lucide-react";
+import { ArrowLeft, Send, Eye, Download } from "lucide-react";
 
 const AnswersModal: FC<{ sessionId: number, onClose: () => void }> = ({ sessionId, onClose }) => {
   const { data, isLoading, isError, error } = useSessionAnswers(sessionId, true);
@@ -87,6 +87,14 @@ const ResultsIndex: FC = () => {
   const confirm = useConfirm();
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
 
+  const SCORE_FILTERS = [
+    { key: 'all', label: 'Semua' },
+    { key: 'best', label: 'Nilai Terbaik' },
+    { key: 'worst', label: 'Nilai Terendah' },
+  ] as const;
+  type ScoreFilter = typeof SCORE_FILTERS[number]['key'];
+  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all');
+
   const handlePublish = async () => {
     const ok = await confirm({
       title: "Publikasikan hasil",
@@ -106,14 +114,73 @@ const ResultsIndex: FC = () => {
   };
 
   const exam = data?.exam;
-  const results = data?.results ?? [];
+  const results = useMemo(() => data?.results ?? [], [data?.results]);
+
+  const finishedScores = useMemo(
+    () => results.filter((r) => r.status === 'finished' && r.total_score !== null).map((r) => r.total_score as number),
+    [results]
+  );
+  const highest = finishedScores.length > 0 ? Math.max(...finishedScores) : null;
+  const lowest = finishedScores.length > 0 ? Math.min(...finishedScores) : null;
+
+  const filteredResults = useMemo(() => {
+    if (scoreFilter === 'best' || scoreFilter === 'worst') {
+      const finished = results.filter((r) => r.status === 'finished' && r.total_score !== null);
+      return [...finished].sort((a, b) => {
+        const diff = (a.total_score ?? 0) - (b.total_score ?? 0);
+        return scoreFilter === 'best' ? -diff : diff;
+      });
+    }
+    return results;
+  }, [results, scoreFilter]);
+
   const { page, totalPages, totalItems, startIndex, endIndex, items, search, setSearch, goToPage } =
-    usePagination<AdminResultItem>(results, {
+    usePagination<AdminResultItem>(filteredResults, {
       searchBy: (r, q) =>
         r.user.name.toLowerCase().includes(q) ||
         r.user.username.toLowerCase().includes(q) ||
         r.status.toLowerCase().includes(q),
     });
+
+  const csvCell = (value: unknown): string => {
+    const s = value === null || value === undefined ? '' : String(value);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const exportCSV = () => {
+    const rows = filteredResults;
+    if (rows.length === 0) {
+      toast.info("Tidak ada data untuk diekspor");
+      return;
+    }
+
+    const sectionTitles = rows[0]?.sections.map((s) => s.title) ?? [];
+    const header = ['No', 'Nama', 'Username', 'Email', 'Status', 'Nilai Total', 'Pelanggaran', ...sectionTitles.map((_, i) => `Nilai Sesi ${i + 1}`)];
+
+    const lines = rows.map((r, index) => [
+      index + 1,
+      r.user.name,
+      r.user.username,
+      r.user.email,
+      r.status,
+      r.total_score ?? '',
+      r.violation_count,
+      ...r.sections.map((s) => s.score ?? ''),
+    ]);
+
+    const csv = [header, ...lines].map((row) => row.map(csvCell).join(',')).join('\r\n');
+
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hasil-ujian-${(exam?.title ?? `exam-${examId}`).replace(/[^a-z0-9]+/gi, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Laporan ${rows.length} peserta diunduh`);
+  };
 
   return (
     <AdminLayout
@@ -121,6 +188,9 @@ const ResultsIndex: FC = () => {
       description="Ringkasan nilai peserta dan detail jawaban."
       actions={
         <>
+          <Button variant="outline" onClick={exportCSV} disabled={isLoading || results.length === 0}>
+            <Download className="size-4" /> Download Laporan
+          </Button>
           {!exam?.results_published && (
             <Button onClick={handlePublish} disabled={isLoading || publishing}>
               <Send className="size-4" /> {publishing ? 'Memublikasikan...' : 'Publish Hasil'}
@@ -158,13 +228,40 @@ const ResultsIndex: FC = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Data Peserta</CardTitle>
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder="Cari nama atau username peserta..."
-                className="w-full sm:max-w-xs"
-              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="text-base">Data Peserta</CardTitle>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <div className="flex gap-1 rounded-lg bg-muted p-1">
+                    {SCORE_FILTERS.map((f) => (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => setScoreFilter(f.key)}
+                        className={
+                          scoreFilter === f.key
+                            ? 'rounded-md bg-background px-3 py-1 text-xs font-medium shadow-sm'
+                            : 'rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground'
+                        }
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                  <SearchInput
+                    value={search}
+                    onChange={setSearch}
+                    placeholder="Cari nama atau username peserta..."
+                    className="w-full sm:max-w-xs"
+                  />
+                </div>
+              </div>
+              {finishedScores.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Peserta selesai: <span className="font-semibold text-foreground">{finishedScores.length}</span>
+                  {" • "}Nilai tertinggi: <span className="font-semibold text-emerald-600">{highest}</span>
+                  {" • "}Nilai terendah: <span className="font-semibold text-destructive">{lowest}</span>
+                </p>
+              )}
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -183,9 +280,11 @@ const ResultsIndex: FC = () => {
                   {items.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
-                        {results.length === 0
-                          ? "Belum ada peserta yang mengerjakan ujian ini."
-                          : `Tidak ada hasil untuk "${search}".`}
+                        {scoreFilter !== 'all' && filteredResults.length === 0
+                          ? "Belum ada peserta yang selesai dan memiliki nilai."
+                          : results.length === 0
+                            ? "Belum ada peserta yang mengerjakan ujian ini."
+                            : `Tidak ada hasil untuk "${search}".`}
                       </TableCell>
                     </TableRow>
                   )}
