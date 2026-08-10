@@ -71,6 +71,11 @@ const ExamTake: FC = () => {
       setRemainingSeconds(state.remaining_seconds ?? 0);
       setPhase('questions');
     } else if (state.phase === 'break') {
+      if (!state.next_section) {
+        setPhase('finished');
+        navigate(`/peserta/exams/${examId}/result`);
+        return;
+      }
       setBreakRemainingSeconds(state.break_remaining_seconds ?? 0);
       setNextSection(state.next_section ?? null);
       setPhase('break');

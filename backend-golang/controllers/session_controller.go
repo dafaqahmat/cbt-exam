@@ -167,9 +167,12 @@ func advanceAfterSection(session *models.ExamSession, current *models.ExamSectio
 
 	next := findNextSection(current.ExamId, current.Order)
 	if next == nil {
+		// Sesi ini adalah sesi terakhir (atau ujian hanya punya satu sesi).
+		// Istirahat tidak berlaku → langsung selesaikan ujian.
 		return finishExam(session)
 	}
 
+	// Istirahat hanya berlaku bila memang ada sesi berikutnya.
 	if current.BreakAfterSeconds > 0 {
 		now := time.Now()
 		session.BreakStartedAt = &now
@@ -469,6 +472,18 @@ func GetCurrentState(c *gin.Context) {
 	if session.BreakStartedAt != nil && session.CurrentSectionId != nil {
 		var section models.ExamSection
 		if err := database.DB.First(&section, *session.CurrentSectionId).Error; err == nil {
+			// Pastikan masih ada sesi berikutnya. Jika tidak (sesi terakhir / ujian
+			// satu sesi), istirahat tidak berlaku → langsung selesaikan ujian.
+			next := findNextSection(section.ExamId, section.Order)
+			if next == nil {
+				c.JSON(http.StatusOK, structs.SuccessResponse{
+					Success: true,
+					Message: "Exam finished",
+					Data:    finishExam(&session),
+				})
+				return
+			}
+
 			breakEnd := session.BreakStartedAt.Add(time.Duration(section.BreakAfterSeconds) * time.Second)
 
 			if time.Now().Before(breakEnd) {
@@ -478,27 +493,17 @@ func GetCurrentState(c *gin.Context) {
 					Data: structs.CurrentStateResponse{
 						Phase:                 "break",
 						BreakRemainingSeconds: int(time.Until(breakEnd).Seconds()),
-						NextSection:           findNextSection(section.ExamId, section.Order),
+						NextSection:           next,
 					},
 				})
 				return
 			}
 
-			next := findNextSection(section.ExamId, section.Order)
-			if next != nil {
-				nextAttempt := startAttempt(&session, next)
-				c.JSON(http.StatusOK, structs.SuccessResponse{
-					Success: true,
-					Message: "Break finished, continuing to next section",
-					Data:    buildQuestionsState(next, nextAttempt),
-				})
-				return
-			}
-
+			nextAttempt := startAttempt(&session, next)
 			c.JSON(http.StatusOK, structs.SuccessResponse{
 				Success: true,
-				Message: "Exam finished",
-				Data:    finishExam(&session),
+				Message: "Break finished, continuing to next section",
+				Data:    buildQuestionsState(next, nextAttempt),
 			})
 			return
 		}
