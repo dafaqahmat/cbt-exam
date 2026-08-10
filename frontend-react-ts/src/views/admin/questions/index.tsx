@@ -37,6 +37,7 @@ const QuestionsIndex: FC = () => {
   const { data: exams } = useAdminExams();
   const exam = exams?.find((e) => (e.sections ?? []).some((s) => s.id === sectionId));
   const isActive = exam?.status === 'active';
+  const isClosed = exam?.status === 'closed';
   const { mutate: updateExam, isPending: updatingExam } = useExamUpdate();
 
   const handleToDraft = async () => {
@@ -92,9 +93,19 @@ const QuestionsIndex: FC = () => {
       description="Daftar soal pada sesi ini."
       actions={
         <>
-          <Link to={`/admin/sections/${sectionId}/questions/create`}>
-            <Button><Plus className="size-4" /> Tambah Soal</Button>
-          </Link>
+          {isActive ? (
+            <Button disabled title="Ubah ke Draft dulu untuk menambah soal">
+              <Plus className="size-4" /> Tambah Soal
+            </Button>
+          ) : isClosed ? (
+            <Button disabled title="Ujian telah ditutup, tidak dapat menambah soal">
+              <Plus className="size-4" /> Tambah Soal
+            </Button>
+          ) : (
+            <Link to={`/admin/sections/${sectionId}/questions/create`}>
+              <Button><Plus className="size-4" /> Tambah Soal</Button>
+            </Link>
+          )}
           <Link to="/admin/exams">
             <Button variant="outline"><ArrowLeft className="size-4" /> Kembali</Button>
           </Link>
@@ -116,6 +127,11 @@ const QuestionsIndex: FC = () => {
           {isActive && (
             <p className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
               Ujian sedang aktif, soal terkunci. Gunakan <strong>"Ubah ke Draft"</strong> untuk menonaktifkan sebelum mengubah atau menghapus soal.
+            </p>
+          )}
+          {isClosed && (
+            <p className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              Ujian telah ditutup (Closed), soal tidak dapat diubah atau dihapus.
             </p>
           )}
           <SearchInput
@@ -162,7 +178,7 @@ const QuestionsIndex: FC = () => {
                       >
                         Ubah ke Draft
                       </Button>
-                    ) : (
+                    ) : isClosed ? null : (
                       <>
                         <Link to={`/admin/questions/${question.id}/edit`}>
                           <Button variant="outline" size="sm"><Pencil className="size-3.5" /> Edit</Button>

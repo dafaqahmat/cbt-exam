@@ -46,6 +46,22 @@ func examNotActiveError(c *gin.Context) {
 	})
 }
 
+func sameCategoryIDs(a, b []uint) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	set := make(map[uint]bool, len(a))
+	for _, id := range a {
+		set[id] = true
+	}
+	for _, id := range b {
+		if !set[id] {
+			return false
+		}
+	}
+	return true
+}
+
 func resetExamProgress(examId uint) {
 	var sessionIds []uint
 	database.DB.Model(&models.ExamSession{}).Where("exam_id = ?", examId).Pluck("id", &sessionIds)
@@ -176,6 +192,15 @@ func UpdateExam(c *gin.Context) {
 		return
 	}
 
+	if exam.Status == "closed" {
+		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+			Success: false,
+			Message: "Exam is closed",
+			Errors:  map[string]string{"Status": "Ujian telah ditutup (Closed), tidak dapat diubah"},
+		})
+		return
+	}
+
 	var req = structs.ExamUpdateRequest{}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -217,6 +242,23 @@ func UpdateExam(c *gin.Context) {
 	if req.Status == "active" && exam.Status != "active" && !examIsReadyToActivate(exam.Id) {
 		examNotActiveError(c)
 		return
+	}
+
+	finalStatus := exam.Status
+	if req.Status != "" {
+		finalStatus = req.Status
+	}
+	if exam.Status == "active" && finalStatus == "active" {
+		var currentCategoryIds []uint
+		database.DB.Table("exam_categories").Where("exam_id = ?", exam.Id).Pluck("category_id", &currentCategoryIds)
+		if !sameCategoryIDs(currentCategoryIds, req.CategoryIds) {
+			c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
+				Success: false,
+				Message: "Validation Errors",
+				Errors:  map[string]string{"CategoryIds": "Kategori tidak dapat diubah saat ujian aktif"},
+			})
+			return
+		}
 	}
 
 	oldStatus := exam.Status
@@ -277,11 +319,11 @@ func DeleteExam(c *gin.Context) {
 		return
 	}
 
-	if exam.Status != "draft" && exam.Status != "closed" {
+	if exam.Status != "draft" {
 		c.JSON(http.StatusUnprocessableEntity, structs.ErrorResponse{
 			Success: false,
-			Message: "Ujian tidak dapat dihapus saat berstatus aktif",
-			Errors:  map[string]string{"Status": "Hanya ujian berstatus Draft atau Closed yang dapat dihapus"},
+			Message: "Ujian tidak dapat dihapus",
+			Errors:  map[string]string{"Status": "Hanya ujian berstatus Draft yang dapat dihapus"},
 		})
 		return
 	}

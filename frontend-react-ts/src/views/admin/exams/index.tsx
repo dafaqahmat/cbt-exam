@@ -141,14 +141,21 @@ const ExamsIndex: FC = () => {
                           <Button variant="outline" size="sm"><Eye className="size-3.5" /> Hasil</Button>
                         </Link>
                         <Link to={`/admin/exams/edit/${exam.id}`}>
-                          <Button variant="outline" size="sm"><Pencil className="size-3.5" /> Edit</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={exam.status === 'closed'}
+                            title={exam.status === 'closed' ? 'Ujian telah ditutup (Closed), tidak dapat diubah.' : undefined}
+                          >
+                            <Pencil className="size-3.5" /> Edit
+                          </Button>
                         </Link>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-auto disabled:cursor-not-allowed disabled:opacity-40"
-                          disabled={isPending || exam.status === 'active'}
-                          title={exam.status === 'active' ? 'Ujian aktif tidak dapat dihapus. Ubah ke Closed atau Draft terlebih dahulu.' : undefined}
+                          disabled={isPending || exam.status !== 'draft'}
+                          title={exam.status !== 'draft' ? 'Hanya ujian berstatus Draft yang dapat dihapus.' : undefined}
                           onClick={() => handleDelete(exam.id, exam.title)}
                         >
                           <Trash2 className="size-3.5" /> Hapus

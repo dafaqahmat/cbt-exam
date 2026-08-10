@@ -60,6 +60,8 @@ const SectionsIndex: FC = () => {
   const { data: exams } = useAdminExams();
   const exam = exams?.find((e) => e.id === examId);
   const isActive = exam?.status === 'active';
+  const isClosed = exam?.status === 'closed';
+  const isLocked = isActive || isClosed;
   const { mutate: updateExam, isPending: updatingExam } = useExamUpdate();
 
   const handleToDraft = async () => {
@@ -182,6 +184,16 @@ const SectionsIndex: FC = () => {
             <CardTitle className="text-base">Form Sesi</CardTitle>
           </CardHeader>
           <CardContent>
+            {isActive && (
+              <p className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                Ujian sedang aktif, sesi tidak dapat ditambah. Nonaktifkan dulu lewat <strong>"Ubah ke Draft"</strong>.
+              </p>
+            )}
+            {isClosed && (
+              <p className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                Ujian telah ditutup (Closed), sesi tidak dapat diubah.
+              </p>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="section-title">Judul Sesi</Label>
@@ -190,6 +202,7 @@ const SectionsIndex: FC = () => {
                   value={form.title}
                   onChange={(e) => handleChange('title', e.target.value)}
                   placeholder="Contoh: Sesi 1 - Penalaran"
+                  disabled={isLocked}
                 />
                 {errors.Title && <p className="text-xs text-destructive">{errors.Title}</p>}
               </div>
@@ -201,6 +214,7 @@ const SectionsIndex: FC = () => {
                   min={1}
                   value={form.order}
                   onChange={(e) => handleChange('order', Number(e.target.value))}
+                  disabled={isLocked}
                 />
                 {errors.Order && <p className="text-xs text-destructive">{errors.Order}</p>}
               </div>
@@ -212,6 +226,7 @@ const SectionsIndex: FC = () => {
                   min={1}
                   value={form.duration_minutes}
                   onChange={(e) => handleChange('duration_minutes', Number(e.target.value))}
+                  disabled={isLocked}
                 />
                 {errors.DurationMinutes && <p className="text-xs text-destructive">{errors.DurationMinutes}</p>}
               </div>
@@ -223,11 +238,12 @@ const SectionsIndex: FC = () => {
                   min={0}
                   value={form.break_after_seconds}
                   onChange={(e) => handleChange('break_after_seconds', Number(e.target.value))}
+                  disabled={isLocked}
                 />
                 <p className="text-xs text-muted-foreground">0 = tanpa istirahat</p>
               </div>
               <div className="flex gap-2 pt-1">
-                <Button type="submit" disabled={isBusy}>
+                <Button type="submit" disabled={isBusy || isLocked}>
                   {isBusy && <Loader2 className="size-4 animate-spin" />}
                   {isBusy ? 'Menyimpan...' : (editingId !== null ? 'Perbarui' : 'Simpan')}
                 </Button>
@@ -251,6 +267,11 @@ const SectionsIndex: FC = () => {
             {isActive && (
               <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
                 Ujian sedang aktif, sesi terkunci. Gunakan <strong>"Ubah ke Draft"</strong> untuk menonaktifkan sebelum mengubah atau menghapus sesi.
+              </p>
+            )}
+            {isClosed && (
+              <p className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                Ujian telah ditutup (Closed), sesi tidak dapat diubah atau dihapus.
               </p>
             )}
           </CardHeader>
@@ -302,17 +323,15 @@ const SectionsIndex: FC = () => {
                             <Button variant="outline" size="sm"><ListChecks className="size-3.5" /> Soal</Button>
                           </Link>
                           {isActive ? (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={updatingExam}
-                                onClick={handleToDraft}
-                              >
-                                Ubah ke Draft
-                              </Button>
-                            </>
-                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={updatingExam}
+                              onClick={handleToDraft}
+                            >
+                              Ubah ke Draft
+                            </Button>
+                          ) : isClosed ? null : (
                             <>
                               <Button variant="outline" size="sm" onClick={() => handleEdit(section)}>
                                 <Pencil className="size-3.5" /> Edit

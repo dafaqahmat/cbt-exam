@@ -21,6 +21,7 @@ interface QuestionFormProps {
   errors: Record<string, string>;
   submitLabel: string;
   isPending: boolean;
+  disabled?: boolean;
   onSubmit: (data: QuestionRequest) => void;
 }
 
@@ -28,7 +29,7 @@ const OPTION_KEYS = ["a", "b", "c", "d"] as const;
 type OptionKey = (typeof OPTION_KEYS)[number];
 type QuestionField = keyof QuestionRequest;
 
-const QuestionForm: FC<QuestionFormProps> = ({ initial, errors, submitLabel, isPending, onSubmit }) => {
+const QuestionForm: FC<QuestionFormProps> = ({ initial, errors, submitLabel, isPending, disabled, onSubmit }) => {
   const [form, setForm] = useState<QuestionRequest>(initial);
   const { mutateAsync: uploadImage, isPending: uploading } = useUploadImage();
 
@@ -110,6 +111,7 @@ const QuestionForm: FC<QuestionFormProps> = ({ initial, errors, submitLabel, isP
             min={1}
             value={form.points}
             onChange={(e) => setField("points", Number(e.target.value))}
+            disabled={disabled}
           />
         </Field>
 
@@ -118,16 +120,17 @@ const QuestionForm: FC<QuestionFormProps> = ({ initial, errors, submitLabel, isP
             value={form.question_text}
             onChange={(e) => setField("question_text", e.target.value)}
             placeholder="Tuliskan pertanyaan..."
+            disabled={disabled}
           />
         </Field>
 
         <Field label="Gambar Soal" className="sm:col-span-2" error={errors.QuestionImage}>
-          <ImageUploader value={form.question_image} onUpload={(f) => handleImageUpload("question_image", f)} disabled={uploading} />
+          <ImageUploader value={form.question_image} onUpload={(f) => handleImageUpload("question_image", f)} disabled={uploading || disabled} />
         </Field>
 
         <Field label="Kunci Jawaban" className="sm:col-span-2" error={errors.CorrectAnswer}>
-          <Select value={form.correct_answer} onValueChange={(v) => v != null && setField("correct_answer", v)}>
-            <SelectTrigger className="w-full">
+          <Select value={form.correct_answer} onValueChange={(v) => v != null && setField("correct_answer", v)} disabled={disabled}>
+            <SelectTrigger className="w-full" disabled={disabled}>
               <SelectValue placeholder="Pilih kunci jawaban" />
             </SelectTrigger>
             <SelectContent>
@@ -153,13 +156,14 @@ const QuestionForm: FC<QuestionFormProps> = ({ initial, errors, submitLabel, isP
                 <Input
                   value={String(form[`option_${key}_text`])}
                   onChange={(e) => setField(`option_${key}_text`, e.target.value)}
+                  disabled={disabled}
                 />
               </Field>
               <Field label={`Opsi ${key.toUpperCase()} — Gambar`}>
                 <ImageUploader
                   value={String(form[`option_${key}_image`])}
                   onUpload={(f) => handleImageUpload(`option_${key}_image` as QuestionField, f)}
-                  disabled={uploading}
+                  disabled={uploading || disabled}
                 />
               </Field>
             </div>
@@ -167,7 +171,7 @@ const QuestionForm: FC<QuestionFormProps> = ({ initial, errors, submitLabel, isP
         </div>
       </div>
 
-      <Button type="submit" className="w-full sm:w-auto" disabled={isPending || uploading}>
+      <Button type="submit" className="w-full sm:w-auto" disabled={isPending || uploading || disabled}>
         {isPending ? "Menyimpan..." : submitLabel}
       </Button>
     </form>

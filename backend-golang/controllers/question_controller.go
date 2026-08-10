@@ -96,6 +96,11 @@ func CreateQuestion(c *gin.Context) {
 		return
 	}
 
+	if errResp, err := sectionExamIsActive(section.ExamId, "Question"); errResp != nil || err != nil {
+		c.JSON(http.StatusUnprocessableEntity, errResp)
+		return
+	}
+
 	var req = structs.QuestionRequest{}
 
 	if err := c.ShouldBindJSON(&req); err != nil {

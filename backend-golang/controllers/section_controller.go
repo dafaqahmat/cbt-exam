@@ -26,7 +26,14 @@ func sectionExamIsActive(examId uint, field string) (*structs.ErrorResponse, err
 		return &structs.ErrorResponse{
 			Success: false,
 			Message: "Exam is active",
-			Errors:  map[string]string{field: "Ujian masih aktif, ubah ke Draft dulu sebelum mengubah atau menghapus"},
+			Errors:  map[string]string{field: "Ujian masih aktif, ubah ke Draft dulu sebelum menambah, mengubah, atau menghapus"},
+		}, nil
+	}
+	if exam.Status == "closed" {
+		return &structs.ErrorResponse{
+			Success: false,
+			Message: "Exam is closed",
+			Errors:  map[string]string{field: "Ujian telah ditutup (Closed), tidak dapat diubah"},
 		}, nil
 	}
 	return nil, nil
@@ -82,6 +89,11 @@ func CreateSection(c *gin.Context) {
 			Message: "Exam not found",
 			Errors:  helpers.TranslateErrorMessage(err),
 		})
+		return
+	}
+
+	if errResp, err := sectionExamIsActive(exam.Id, "Section"); errResp != nil || err != nil {
+		c.JSON(http.StatusUnprocessableEntity, errResp)
 		return
 	}
 

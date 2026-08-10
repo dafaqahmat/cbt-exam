@@ -5,6 +5,7 @@ import QuestionForm from "../../../components/QuestionForm";
 import { useQuestionUpdate } from "../../../hooks/question/useQuestionUpdate";
 import { QuestionRequest } from "../../../hooks/question/useQuestionCreate";
 import { useQuestionById } from "../../../hooks/question/useQuestionById";
+import { useAdminExams } from "../../../hooks/exam/useAdminExams";
 import { getValidationErrors } from "../../../services/errors";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,13 @@ const QuestionsEdit: FC = () => {
 
   const { data: question, isLoading, isError, error } = useQuestionById(questionId);
   const { mutate, isPending } = useQuestionUpdate();
+  const { data: exams } = useAdminExams();
+  const exam = exams?.find((e) =>
+    (e.sections ?? []).some((s) => s.id === question?.section_id)
+  );
+  const isActive = exam?.status === 'active';
+  const isClosed = exam?.status === 'closed';
+  const isLocked = isActive || isClosed;
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (data: QuestionRequest) => {
@@ -69,14 +77,27 @@ const QuestionsEdit: FC = () => {
           )}
           {isError && <p className="text-sm text-destructive">Error: {error.message}</p>}
           {initialForm && (
-            <QuestionForm
-              key={question!.id}
-              initial={initialForm}
-              errors={errors}
-              submitLabel="Perbarui"
-              isPending={isPending}
-              onSubmit={handleSubmit}
-            />
+            <>
+              {isActive && (
+                <p className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                  Ujian sedang aktif, soal tidak dapat diubah. Nonaktifkan dulu lewat <strong>"Ubah ke Draft"</strong> pada daftar soal.
+                </p>
+              )}
+              {isClosed && (
+                <p className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  Ujian telah ditutup (Closed), soal tidak dapat diubah.
+                </p>
+              )}
+              <QuestionForm
+                key={question!.id}
+                initial={initialForm}
+                errors={errors}
+                submitLabel="Perbarui"
+                isPending={isPending}
+                disabled={isLocked}
+                onSubmit={handleSubmit}
+              />
+            </>
           )}
         </CardContent>
       </Card>

@@ -123,6 +123,11 @@ const ExamsEdit: FC = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {exam?.status === 'closed' && (
+                <p className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  Ujian telah ditutup (Closed), tidak dapat diubah.
+                </p>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="title">Judul</Label>
                 <Input
@@ -131,6 +136,7 @@ const ExamsEdit: FC = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Judul ujian"
+                  disabled={exam?.status === 'closed'}
                 />
                 {errors.Title && <p className="text-xs text-destructive">{errors.Title}</p>}
               </div>
@@ -142,13 +148,14 @@ const ExamsEdit: FC = () => {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Deskripsi ujian"
+                  disabled={exam?.status === 'closed'}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label>Status</Label>
-                <Select value={status} onValueChange={(v) => v != null && setStatus(v)}>
-                  <SelectTrigger className="w-full">
+                <Select value={status} onValueChange={(v) => v != null && setStatus(v)} disabled={exam?.status === 'closed'}>
+                  <SelectTrigger className="w-full" disabled={exam?.status === 'closed'}>
                     <SelectValue placeholder="Pilih status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -176,11 +183,17 @@ const ExamsEdit: FC = () => {
                         <Checkbox
                           checked={categoryIds.includes(cat.id)}
                           onChange={() => toggleCategory(cat.id)}
+                          disabled={exam?.status === 'closed' || exam?.status === 'active'}
                         />
                         {cat.name}
                     </Label>
                   ))}
                 </div>
+                {exam?.status === 'active' && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Kategori tidak dapat diubah saat ujian aktif.
+                  </p>
+                )}
                 {(categories ?? []).length === 0 && (
                   <p className="text-xs text-muted-foreground">
                     Belum ada kategori. Tambah dulu di <Link to="/admin/categories" className="underline">Kelola Kategori</Link>.
@@ -190,7 +203,7 @@ const ExamsEdit: FC = () => {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending || exam?.status === 'closed'}>
                   {isPending && <Loader2 className="size-4 animate-spin" />}
                   {isPending ? 'Menyimpan...' : 'Perbarui'}
                 </Button>
