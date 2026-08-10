@@ -23,9 +23,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { AlertTriangle, Loader2, ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { AlertTriangle, Loader2, ChevronLeft, ChevronRight, Send, ShieldAlert } from "lucide-react";
 
-type Phase = 'loading' | 'questions' | 'break' | 'finished';
+type Phase = 'loading' | 'countdown' | 'questions' | 'break' | 'finished';
 
 const formatTime = (seconds: number): string => {
   const m = Math.floor(seconds / 60);
@@ -49,6 +49,7 @@ const ExamTake: FC = () => {
   const [nextSection, setNextSection] = useState<Section | null>(null);
   const [showViolationModal, setShowViolationModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Menyiapkan ujian...');
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   const phaseRef = useRef<Phase>('loading');
   const answersRef = useRef<Record<number, string>>({});
@@ -124,8 +125,8 @@ const ExamTake: FC = () => {
         const current = await getCurrentState(examId);
         if (!mounted) return;
         if (current.phase === 'not_started') {
-          const started = await startExam(examId);
-          if (mounted) applyState(started);
+          setPhase('countdown');
+          setCountdown(10);
         } else {
           applyState(current);
         }
@@ -138,6 +139,29 @@ const ExamTake: FC = () => {
     })();
     return () => { mounted = false; };
   }, [examId, applyState]);
+
+  useEffect(() => {
+    if (phase !== 'countdown' || countdown === null) return;
+
+    if (countdown === 0) {
+      startExam(examId)
+        .then((state) => {
+          if (phaseRef.current === 'countdown') applyState(state);
+        })
+        .catch(() => {
+          setStatusMessage('Gagal memulai ujian. Muat ulang halaman untuk mencoba lagi.');
+          setPhase('loading');
+        });
+      setCountdown(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [phase, countdown, examId, applyState]);
 
   useEffect(() => {
     let handled = false;
@@ -306,6 +330,47 @@ const ExamTake: FC = () => {
 
   const answeredCount = Object.keys(answers).length;
   const currentQuestion = questions[currentIndex];
+
+  if (phase === 'countdown') {
+    const tick = countdown ?? 10;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-brand-gradient px-6 py-8 text-center" style={{ userSelect: 'none' }}>
+        <div className="w-full max-w-lg rounded-2xl bg-white/95 p-8 shadow-2xl sm:p-10">
+          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+            <ShieldAlert className="size-9" />
+          </div>
+          <h2 className="text-2xl font-extrabold text-foreground sm:text-3xl">Ujian Akan Dimulai</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Bersiap, ujian dimulai dalam beberapa detik.</p>
+
+          <div className="my-7 rounded-xl border border-amber-200 bg-amber-50 p-5 text-left">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-amber-800">
+              Pengumuman Pengawasan Ujian
+            </h3>
+            <ul className="space-y-2.5 text-sm text-slate-700">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-600" />
+                Ujian ini diawasi secara elektronik. Perilaku Anda selama ujian akan direkam.
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-600" />
+                Segala tindakan yang terindikasi kecurangan akan otomatis tercatat dalam sistem.
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-600" />
+                Meninggalkan tab, mengambil screenshot, atau tindakan mencurigakan lainnya akan dicatat
+                sebagai pelanggaran.
+              </li>
+            </ul>
+          </div>
+
+          <div className="mx-auto flex size-24 items-center justify-center rounded-full border-4 border-primary/20">
+            <span className="text-5xl font-extrabold tabular-nums text-primary">{tick}</span>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">Jangan menutup atau meninggalkan halaman ini.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (phase === 'loading') {
     return (
