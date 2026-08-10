@@ -21,7 +21,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import Pagination from "@/components/common/Pagination";
 import SearchInput from "@/components/common/SearchInput";
-import { Plus, Pencil, Trash2, ListChecks, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, ListChecks, Eye, Send } from "lucide-react";
 
 const ExamsIndex: FC = () => {
   const { data: exams, isLoading, isError, error } = useAdminExams();
@@ -139,6 +139,11 @@ const ExamsIndex: FC = () => {
                         </Link>
                         <Link to={`/admin/exams/${exam.id}/results`}>
                           <Button variant="outline" size="sm"><Eye className="size-3.5" /> Hasil</Button>
+                        </Link>
+                        <Link to={`/admin/exams/${exam.id}/notify`}>
+                          <Button variant="outline" size="sm">
+                            <Send className="size-3.5" /> Notifikasi
+                          </Button>
                         </Link>
                         <Link to={`/admin/exams/edit/${exam.id}`}>
                           <Button

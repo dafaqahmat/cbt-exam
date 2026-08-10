@@ -71,6 +71,10 @@ func SetupRouter() *gin.Engine {
 		admin.GET("/exams/:id/results", controllers.AdminFindExamResults)
 		admin.GET("/sessions/:id/answers", controllers.AdminFindSessionAnswers)
 
+		// pemberitahuan email
+		admin.GET("/exams/:id/notify/preview", controllers.GetNotifyPreview)
+		admin.POST("/exams/:id/notify", controllers.NotifyExamParticipants)
+
 		// laporan ujian
 		admin.GET("/reports", controllers.GenerateReport)
 	}
