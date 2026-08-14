@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"math/rand"
 	"net/http"
 	"time"
 	"cbt-exam/backend-api/database"
@@ -105,6 +106,12 @@ func startAttempt(session *models.ExamSession, section *models.ExamSection) *mod
 func buildQuestionsState(section *models.ExamSection, attempt *models.SectionAttempt) structs.CurrentStateResponse {
 	var questions []models.Question
 	database.DB.Where("section_id = ?", section.Id).Order("id ASC").Find(&questions)
+
+	// Acak urutan soal berdasarkan session_id (konsisten per peserta)
+	rng := rand.New(rand.NewSource(int64(attempt.SessionId)))
+	rng.Shuffle(len(questions), func(i, j int) {
+		questions[i], questions[j] = questions[j], questions[i]
+	})
 
 	return structs.CurrentStateResponse{
 		Phase:            "questions",
