@@ -375,3 +375,71 @@ func PublishExamResults(c *gin.Context) {
 		Data:    exam,
 	})
 }
+
+func DuplicateExam(c *gin.Context) {
+	id := c.Param("id")
+
+	var oldExam models.Exam
+	if err := database.DB.Preload("Sections.Questions").Preload("Categories").First(&oldExam, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, structs.ErrorResponse{
+			Success: false,
+			Message: "Exam not found",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	newExam := models.Exam{
+		Title:       "(Copy) " + oldExam.Title,
+		Description: oldExam.Description,
+		Status:      "draft",
+		Categories:  oldExam.Categories,
+	}
+
+	if err := database.DB.Create(&newExam).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, structs.ErrorResponse{
+			Success: false,
+			Message: "Failed to duplicate exam",
+			Errors:  helpers.TranslateErrorMessage(err),
+		})
+		return
+	}
+
+	for _, oldSection := range oldExam.Sections {
+		newSection := models.ExamSection{
+			ExamId:            newExam.Id,
+			Title:             oldSection.Title,
+			Order:             oldSection.Order,
+			DurationMinutes:   oldSection.DurationMinutes,
+			BreakAfterSeconds: oldSection.BreakAfterSeconds,
+		}
+		if err := database.DB.Create(&newSection).Error; err != nil {
+			continue
+		}
+
+		for _, oldQuestion := range oldSection.Questions {
+			newQuestion := models.Question{
+				SectionId:     newSection.Id,
+				QuestionText:  oldQuestion.QuestionText,
+				QuestionImage: oldQuestion.QuestionImage,
+				OptionAText:   oldQuestion.OptionAText,
+				OptionAImage:  oldQuestion.OptionAImage,
+				OptionBText:   oldQuestion.OptionBText,
+				OptionBImage:  oldQuestion.OptionBImage,
+				OptionCText:   oldQuestion.OptionCText,
+				OptionCImage:  oldQuestion.OptionCImage,
+				OptionDText:   oldQuestion.OptionDText,
+				OptionDImage:  oldQuestion.OptionDImage,
+				CorrectAnswer: oldQuestion.CorrectAnswer,
+				Points:        oldQuestion.Points,
+			}
+			database.DB.Create(&newQuestion)
+		}
+	}
+
+	c.JSON(http.StatusCreated, structs.SuccessResponse{
+		Success: true,
+		Message: "Exam duplicated successfully",
+		Data:    newExam,
+	})
+}

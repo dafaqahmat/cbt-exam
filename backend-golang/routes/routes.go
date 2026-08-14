@@ -53,6 +53,7 @@ func SetupRouter() *gin.Engine {
 		admin.PUT("/exams/:id", controllers.UpdateExam)
 		admin.DELETE("/exams/:id", controllers.DeleteExam)
 		admin.POST("/exams/:id/publish", controllers.PublishExamResults)
+		admin.POST("/exams/:id/duplicate", controllers.DuplicateExam)
 
 		// sesi
 		admin.GET("/exams/:id/sections", controllers.FindSections)

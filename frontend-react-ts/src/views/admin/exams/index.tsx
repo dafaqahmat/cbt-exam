@@ -3,6 +3,7 @@ import AdminLayout from '../../../components/layout/AdminLayout';
 import { Link } from "react-router";
 import { useAdminExams } from "../../../hooks/exam/useAdminExams";
 import { useExamDelete } from "../../../hooks/exam/useExamDelete";
+import { useExamDuplicate } from "../../../hooks/exam/useExamDuplicate";
 import { usePagination } from "../../../hooks/usePagination";
 import { useQueryClient } from '@tanstack/react-query';
 import { useConfirm } from "@/components/common/ConfirmProvider";
@@ -21,7 +22,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import Pagination from "@/components/common/Pagination";
 import SearchInput from "@/components/common/SearchInput";
-import { Plus, Pencil, Trash2, ListChecks, Eye, Send } from "lucide-react";
+import { Plus, Pencil, Trash2, ListChecks, Eye, Send, Copy } from "lucide-react";
 
 const ExamsIndex: FC = () => {
   const { data: exams, isLoading, isError, error } = useAdminExams();
@@ -31,6 +32,7 @@ const ExamsIndex: FC = () => {
     });
   const queryClient = useQueryClient();
   const { mutate, isPending } = useExamDelete();
+  const { mutate: duplicateExam, isPending: isDuplicating } = useExamDuplicate();
   const confirm = useConfirm();
 
   const handleDelete = async (id: number, title: string) => {
@@ -48,6 +50,23 @@ const ExamsIndex: FC = () => {
         toast.success("Ujian berhasil dihapus");
       },
       onError: () => toast.error("Gagal menghapus ujian"),
+    });
+  }
+
+  const handleDuplicate = async (id: number, title: string) => {
+    const ok = await confirm({
+      title: "Duplikat ujian",
+      description: `Duplikat ujian "${title}"? Semua sesi dan soal akan disalin ke ujian baru berstatus draft.`,
+      confirmLabel: "Duplikat",
+    });
+    if (!ok) return;
+
+    duplicateExam(id, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
+        toast.success("Ujian berhasil diduplikat");
+      },
+      onError: () => toast.error("Gagal menduplikat ujian"),
     });
   }
 
@@ -145,6 +164,14 @@ const ExamsIndex: FC = () => {
                             <Send className="size-3.5" /> Notifikasi
                           </Button>
                         </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isDuplicating}
+                          onClick={() => handleDuplicate(exam.id, exam.title)}
+                        >
+                          <Copy className="size-3.5" /> Duplikat
+                        </Button>
                         <Link to={`/admin/exams/edit/${exam.id}`}>
                           <Button
                             variant="outline"
